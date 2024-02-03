@@ -1,0 +1,41 @@
+site_name: "Pydantic Tornado"
+theme:
+  name: mkdocs-material-adr
+  features:
+    - navigation.instant
+docs_dir: doc
+nav:
+  - Explanation:
+      - Decisions: adr/index.md
+      - Records:
+          - adr/0001-record-architecture-decisions.md
+          - adr/0002-generate-documentation-using-mkdocs.md
+not_in_nav: |
+  index.md
+plugins:
+  - mkdocstrings:
+      default_handler: python_xref
+      enable_inventory: true
+      handlers:
+        python_xref:
+          import:
+            - "https://docs.python.org/3/objects.inv"
+            - "https://www.tornadoweb.org/en/stable/objects.inv"
+          options:
+            docstring_style: "sphinx"
+            docstring_section_style: "list"
+            relative_crossrefs: true
+            show_root_heading: true
+            show_signature: true
+            unwrap_annotated: true
+  - mkdocs-material-adr/adr:
+      graph_file: adr/index.md
+markdown_extensions:
+  - codehilite
+  - fenced_code
+  - sane_lists
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format

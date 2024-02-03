@@ -1,0 +1,95 @@
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+authors = [{name = "Dave Shawley", email = "daveshawley@gmail.com"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "pydantic>=2.5",
+  "tornado>=6.2",
+  "yarl>=1.7,<2",
+]
+license = "BSD-3-Clause"
+name = "pydantic-tornado"
+requires-python = ">=3.12"
+version = "0.0.0"
+
+[tool.coverage.report]
+exclude_also = ["typing.Protocol", "typing.overload"]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+source = ["pydantictornado"]
+
+[tool.hatch.build]
+skip-excluded-dirs = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pydantictornado"]
+
+[tool.hatch.envs.default]
+dependencies = [
+  "adr-tools-python",
+  "build",
+  "coverage[toml]",
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocstrings[python]>=0.24",
+  "mkdocs-material-adr",
+  "mkdocstrings-python-xref",
+  "mypy>=1.7",
+  "pre-commit",
+  "pytest",
+  "ruff>=0.1.5",
+]
+python = "python3.12"
+
+[tool.hatch.envs.default.scripts]
+test = [
+  "pre-commit run --all-files",
+  "mypy -p pydantictornado -p tests",
+  "coverage run -m pytest tests",
+  "coverage report",
+]
+
+[tool.mypy]
+disallow_redefinition = true
+implicit_optional = false
+mypy_path = ["src"]
+plugins = "pydantic.mypy"
+skip_version_check = true
+strict = true
+warn_unreachable = true
+
+[tool.pytest]
+failed-first = true
+import-mode = "importlib"
+log-level = "debug"
+
+[tool.ruff]
+indent-width = 4
+line-length = 79
+target-version = "py312"
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+flake8-quotes = {inline-quotes = "single"}
+flake8-unused-arguments = {ignore-variadic-names = true}
+ignore = [
+  "ANN101",  # missing type annotation for self
+  "ANN102",  # missing type annotation for cls
+  "COM812",  # missing trailing commas
+  "D",  # pydocstyle
+  "ISC",  # implicitly concat'ing strings makes format non-deterministic
+  "PT",  # flake8-pytest-style
+  "TRY400",  # logging.exception is not universally preferred
+]
+pycodestyle = {ignore-overlong-task-comments = true}
+select = ["ALL"]
