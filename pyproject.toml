@@ -87,6 +87,7 @@ ignore = [
   "ANN102",  # missing type annotation for cls
   "COM812",  # missing trailing commas
   "D",  # pydocstyle
+  "EM",  # raise Error('some literal') is okay IMO
   "ISC",  # implicitly concat'ing strings makes format non-deterministic
   "PT",  # flake8-pytest-style
   "TRY400",  # logging.exception is not universally preferred
