@@ -1,6 +1,10 @@
+import datetime
+import ipaddress
 import typing
 import unittest
+import uuid
 
+import yarl
 from pydantictornado import openapi
 
 
@@ -20,6 +24,40 @@ class DescribeTypeTests(unittest.TestCase):
             openapi.describe_type(object)
         with self.assertRaises(NotImplementedError):
             openapi.describe_type(dict)
+
+    def test_describining_library_types(self) -> None:
+        self.assertEqual(
+            {'type': 'string', 'format': 'date'},
+            openapi.describe_type(datetime.date),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'date-time'},
+            openapi.describe_type(datetime.datetime),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'time'},
+            openapi.describe_type(datetime.time),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'duration'},
+            openapi.describe_type(datetime.timedelta),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'ipv4'},
+            openapi.describe_type(ipaddress.IPv4Address),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'ipv6'},
+            openapi.describe_type(ipaddress.IPv6Address),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'uuid'},
+            openapi.describe_type(uuid.UUID),
+        )
+        self.assertEqual(
+            {'type': 'string', 'format': 'uri'},
+            openapi.describe_type(yarl.URL),
+        )
 
     def test_describing_typed_collections(self) -> None:
         self.assertEqual(

@@ -1,27 +1,40 @@
 import collections.abc
+import datetime
+import ipaddress
 import types
 import typing
+import uuid
 import warnings
+
+import yarl
 
 from pydantictornado import util
 
 
-def _initialize_primitive_map(
+def _initialize_type_map(
     m: collections.abc.MutableMapping[type, dict[str, typing.Any]]
 ) -> None:
     m.update(
         {
             bool: {'type': 'boolean'},
-            int: {'type': 'integer'},
+            datetime.date: {'type': 'string', 'format': 'date'},
+            datetime.datetime: {'type': 'string', 'format': 'date-time'},
+            datetime.time: {'type': 'string', 'format': 'time'},
+            datetime.timedelta: {'type': 'string', 'format': 'duration'},
             float: {'type': 'number'},
+            int: {'type': 'integer'},
+            ipaddress.IPv4Address: {'type': 'string', 'format': 'ipv4'},
+            ipaddress.IPv6Address: {'type': 'string', 'format': 'ipv6'},
             str: {'type': 'string'},
             types.NoneType: {'type': 'null'},
+            uuid.UUID: {'type': 'string', 'format': 'uuid'},
+            yarl.URL: {'type': 'string', 'format': 'uri'},
         }
     )
 
 
-_primitive_map = util.ClassMapping[dict[str, typing.Any]](
-    initialize_data=_initialize_primitive_map
+_simple_type_map = util.ClassMapping[dict[str, typing.Any]](
+    initialize_data=_initialize_type_map
 )
 
 # NB ... the type of typing.Literal[...] or typing.LiteralString
@@ -51,7 +64,7 @@ def describe_type(t: Describable) -> Description:
         raise TypeError(f'Unexpected value of type {type(t)}')  # noqa: TRY003
 
     unspecified = {'': object()}
-    if (v := _primitive_map.get(t, unspecified)) is not unspecified:
+    if (v := _simple_type_map.get(t, unspecified)) is not unspecified:
         return v.copy()
 
     if issubclass(t, collections.abc.Mapping):
