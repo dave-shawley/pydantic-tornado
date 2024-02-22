@@ -1,5 +1,6 @@
 import collections.abc
 import datetime
+import functools
 import ipaddress
 import types
 import typing
@@ -78,6 +79,12 @@ def describe_type(t: Describable) -> Description:
         return _describe_collection(t, alias_args)
 
     raise ValueError
+
+
+# mypy gets cranky about the hash-ability of `Describable` or something
+# so don't enable the cache while checking types
+if not typing.TYPE_CHECKING:  # pragma: nobranch
+    describe_type = functools.cache(describe_type)
 
 
 def _describe_literals(t: Describable) -> Description | None:
