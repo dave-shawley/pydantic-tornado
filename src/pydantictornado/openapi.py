@@ -43,18 +43,29 @@ _simple_type_map = util.ClassMapping[dict[str, typing.Any]](
 # cannot be included in a type annotation; however, they are
 # matched as "object" instances.
 Describable = types.GenericAlias | types.UnionType | type | object
-Description = dict[str, typing.Any]
+Description = collections.abc.Mapping[str, typing.Any]
+MutableDescription = dict[str, typing.Any]
 
 
 def describe_type(t: Describable) -> Description:
     """Describe `t` as an OpenAPI schema"""
+    return types.MappingProxyType(_describe_type(t))
+
+
+# mypy gets cranky about the hash-ability of `Describable` or something
+# so don't enable the cache while checking types
+if not typing.TYPE_CHECKING:  # pragma: nobranch
+    describe_type = functools.cache(describe_type)
+
+
+def _describe_type(t: Describable) -> MutableDescription:
     alias_args = None
     if isinstance(t, types.GenericAlias):
         alias_args, t = typing.get_args(t), typing.get_origin(t)
     if isinstance(t, types.UnionType):
         return {
             'anyOf': [
-                describe_type(union_member)
+                _describe_type(union_member)
                 for union_member in typing.get_args(t)
             ]
         }
@@ -81,13 +92,7 @@ def describe_type(t: Describable) -> Description:
     raise ValueError
 
 
-# mypy gets cranky about the hash-ability of `Describable` or something
-# so don't enable the cache while checking types
-if not typing.TYPE_CHECKING:  # pragma: nobranch
-    describe_type = functools.cache(describe_type)
-
-
-def _describe_literals(t: Describable) -> Description | None:
+def _describe_literals(t: Describable) -> MutableDescription | None:
     if t is None:
         return {'type': 'null'}
     if t is typing.LiteralString:
@@ -95,7 +100,7 @@ def _describe_literals(t: Describable) -> Description | None:
     if typing.get_origin(t) is typing.Literal:
         options = []
         for arg in typing.get_args(t):
-            options.append(describe_type(type(arg)))
+            options.append(_describe_type(type(arg)))
             options[-1]['const'] = arg
         if len(options) > 1:
             return {'anyOf': options}
@@ -106,12 +111,12 @@ def _describe_literals(t: Describable) -> Description | None:
 def _describe_collection(
     t: type,
     alias_args: tuple[Describable, ...] | None,
-) -> Description:
-    description: Description = {'type': 'array'}
+) -> MutableDescription:
+    description: MutableDescription = {'type': 'array'}
     if alias_args:
         if issubclass(t, tuple):
             description['prefixItems'] = [
-                describe_type(item) for item in alias_args
+                _describe_type(item) for item in alias_args
             ]
             description['items'] = False
             description['minItems'] = len(alias_args)
@@ -123,5 +128,5 @@ def _describe_collection(
                     RuntimeWarning,
                     stacklevel=2,
                 )
-            description['items'] = describe_type(alias_args[0])
+            description['items'] = _describe_type(alias_args[0])
     return description
