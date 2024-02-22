@@ -4,6 +4,7 @@ import typing
 import unittest
 import uuid
 
+import pydantic
 import yarl
 from pydantictornado import openapi
 
@@ -166,3 +167,26 @@ class DescribeTypeTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             openapi.describe_type(SomeProtocol)
+
+    def test_pydantic_support(self) -> None:
+        class Widget(pydantic.BaseModel):
+            id: uuid.UUID  # noqa: A003 - shadows builtin
+            name: str
+            created_at: datetime.datetime
+
+        self.assertEqual(
+            Widget.model_json_schema(), openapi.describe_type(Widget)
+        )
+        self.assertEqual(
+            {'type': 'array', 'items': Widget.model_json_schema()},
+            openapi.describe_type(list[Widget]),
+        )
+        self.assertEqual(
+            {
+                'anyOf': [
+                    {'type': 'string', 'format': 'uuid'},
+                    Widget.model_json_schema(),
+                ]
+            },
+            openapi.describe_type(uuid.UUID | Widget),
+        )

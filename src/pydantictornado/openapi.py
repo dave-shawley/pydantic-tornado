@@ -6,6 +6,7 @@ import typing
 import uuid
 import warnings
 
+import pydantic
 import yarl
 
 from pydantictornado import util
@@ -62,6 +63,9 @@ def describe_type(t: Describable) -> Description:
 
     if not isinstance(t, type):
         raise TypeError(f'Unexpected value of type {type(t)}')  # noqa: TRY003
+
+    if issubclass(t, pydantic.BaseModel):
+        return t.model_json_schema()
 
     unspecified = {'': object()}
     if (v := _simple_type_map.get(t, unspecified)) is not unspecified:
