@@ -190,3 +190,77 @@ class DescribeTypeTests(unittest.TestCase):
             },
             openapi.describe_type(uuid.UUID | Widget),
         )
+
+
+class OpenAPIAnnotationTests(unittest.TestCase):
+    def test_extra(self) -> None:
+        self.assertEqual(
+            {'type': 'string', 'format': 'uuid', 'title': 'Unique identifier'},
+            openapi.describe_type(
+                typing.Annotated[
+                    uuid.UUID,
+                    openapi.SchemaExtra(title='Unique identifier'),
+                ]
+            ),
+        )
+
+    def test_multiple_extra(self) -> None:
+        self.assertEqual(
+            {
+                'title': 'Unique identifier',
+                'description': 'Uniquely identifies the thing',
+                'type': 'string',
+                'format': 'uuid',
+            },
+            openapi.describe_type(
+                typing.Annotated[
+                    uuid.UUID,
+                    openapi.SchemaExtra(title='Unique identifier'),
+                    openapi.SchemaExtra(
+                        description='Uniquely identifies the thing'
+                    ),
+                ]
+            ),
+        )
+
+    def test_other_annotations_ignored(self) -> None:
+        class OtherAnnotation:
+            pass
+
+        self.assertEqual(
+            {'type': 'string', 'format': 'uuid', 'title': 'Unique identifier'},
+            openapi.describe_type(
+                typing.Annotated[
+                    uuid.UUID,
+                    openapi.SchemaExtra(title='Unique identifier'),
+                    OtherAnnotation(),
+                ]
+            ),
+        )
+
+    def test_extras_at_multiple_levels(self) -> None:
+        price = typing.Annotated[float, openapi.SchemaExtra(title='Item cost')]
+        default_price = typing.Annotated[
+            price,
+            openapi.SchemaExtra(default=0.99),
+            openapi.SchemaExtra(title='Default item cost'),
+        ]
+        self.assertEqual(
+            {
+                'type': 'array',
+                'prefixItems': [
+                    {
+                        'title': 'Default item cost',
+                        'type': 'number',
+                        'default': 0.99,
+                    },
+                    {
+                        'type': 'array',
+                        'items': {'type': 'number', 'title': 'Item cost'},
+                    },
+                ],
+                'minItems': 2,
+                'items': False,
+            },
+            openapi.describe_type(tuple[default_price, list[price]]),
+        )

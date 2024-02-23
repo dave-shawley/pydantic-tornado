@@ -13,6 +13,22 @@ import yarl
 from pydantictornado import util
 
 
+class SchemaExtra:
+    def __init__(self, **extra: object) -> None:
+        self.extra = extra
+
+    def update(self, other: typing.Self) -> None:
+        self.extra.update(other.extra)
+
+    def apply(self, v: dict[str, typing.Any]) -> dict[str, typing.Any]:
+        v.update(self.extra)
+        return v
+
+
+# this is used to detect annotated types in _describe_type
+AnnotationType = type(typing.Annotated[object, 'ignored'])
+
+
 def _initialize_type_map(
     m: collections.abc.MutableMapping[type, dict[str, typing.Any]]
 ) -> None:
@@ -62,32 +78,37 @@ def _describe_type(t: Describable) -> MutableDescription:
     alias_args = None
     if isinstance(t, types.GenericAlias):
         alias_args, t = typing.get_args(t), typing.get_origin(t)
+
+    t, openapi_extra = _extract_extra(t)
+
     if isinstance(t, types.UnionType):
-        return {
-            'anyOf': [
-                _describe_type(union_member)
-                for union_member in typing.get_args(t)
-            ]
-        }
+        return openapi_extra.apply(
+            {
+                'anyOf': [
+                    _describe_type(union_member)
+                    for union_member in typing.get_args(t)
+                ]
+            }
+        )
 
     if description := _describe_literals(t):
-        return description
+        return openapi_extra.apply(description)
 
     if not isinstance(t, type):
         raise TypeError(f'Unexpected value of type {type(t)}')  # noqa: TRY003
 
     if issubclass(t, pydantic.BaseModel):
-        return t.model_json_schema()
+        return openapi_extra.apply(t.model_json_schema())
 
     unspecified = {'': object()}
     if (v := _simple_type_map.get(t, unspecified)) is not unspecified:
-        return v.copy()
+        return openapi_extra.apply(v.copy())
 
     if issubclass(t, collections.abc.Mapping):
         raise NotImplementedError('Mapping not implemented')
 
     if issubclass(t, collections.abc.Collection):
-        return _describe_collection(t, alias_args)
+        return openapi_extra.apply(_describe_collection(t, alias_args))
 
     raise ValueError
 
@@ -130,3 +151,21 @@ def _describe_collection(
                 )
             description['items'] = _describe_type(alias_args[0])
     return description
+
+
+def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:
+    unwrapped = t
+    extra = SchemaExtra()
+
+    if isinstance(t, AnnotationType):
+        try:
+            metadata: list[object] = t.__metadata__  # type: ignore[attr-defined]
+            unwrapped = t.__origin__  # type: ignore[attr-defined]
+        except AttributeError:  # pragma: nocover -- being overly cautious here
+            pass
+        else:
+            for meta in metadata:
+                if isinstance(meta, SchemaExtra):
+                    extra.update(meta)
+
+    return unwrapped, extra
