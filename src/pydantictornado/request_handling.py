@@ -1,19 +1,48 @@
-import collections
+import collections.abc
+import datetime
 import inspect
+import ipaddress
+import json
 import logging
 import typing
+import uuid
 
 import tornado.httputil
+import yarl
 from tornado import web
 
 from pydantictornado import util
 
+ReturnsNone: typing.TypeAlias = type(None)  # type: ignore[no-redef] # wtf?
+"""Explicitly mark functions that return `None` as a value
+
+This is used to distinguish between explicitly returning `None`
+versus implicitly returning `None` with an empty return.
+
+"""
+
 PathCoercion = typing.Callable[[str], typing.Any]
 
+ResponseType: typing.TypeAlias = (  # - mypy doesn't support type here
+    bool
+    | float
+    | int
+    | str
+    | datetime.date
+    | datetime.datetime
+    | datetime.time
+    | datetime.timedelta
+    | ipaddress.IPv4Address
+    | ipaddress.IPv6Address
+    | uuid.UUID
+    | yarl.URL
+    | collections.abc.Mapping[str, 'ResponseType']
+    | collections.abc.Sequence['ResponseType']
+    | None
+    | ReturnsNone
+)
 
-class RequestMethod(typing.Protocol):
-    async def __call__(self, /, **kwargs: object) -> None:
-        ...
+RequestMethod = typing.Callable[..., typing.Awaitable[ResponseType]]
 
 
 def identity_transform_factory() -> PathCoercion:
@@ -28,13 +57,13 @@ class RequestHandler(web.RequestHandler):
 
     # The following annotations help out type checkers. The
     # methods are bound in `initialize()`.
-    delete: RequestMethod
-    get: RequestMethod
-    head: RequestMethod
-    options: RequestMethod
-    patch: RequestMethod
-    post: RequestMethod
-    put: RequestMethod
+    delete: RequestMethod  # type: ignore[assignment] # signature mismatch
+    get: RequestMethod  # type: ignore[assignment] # signature mismatch
+    head: RequestMethod  # type: ignore[assignment] # signature mismatch
+    options: RequestMethod  # type: ignore[assignment] # signature mismatch
+    patch: RequestMethod  # type: ignore[assignment] # signature mismatch
+    post: RequestMethod  # type: ignore[assignment] # signature mismatch
+    put: RequestMethod  # type: ignore[assignment] # signature mismatch
 
     def initialize(
         self,
@@ -53,13 +82,16 @@ class RequestHandler(web.RequestHandler):
 
         for http_method in self.SUPPORTED_METHODS:
             key = http_method.lower()
-            if func := typing.cast(RequestMethod, kwargs.pop(key, None)):
+            func = kwargs.pop(key, util.UNSPECIFIED)
+            if func is not util.UNSPECIFIED:
                 if not inspect.iscoroutinefunction(func):
                     self.logger.critical(
                         'implementation method for %r is not a co-routine', key
                     )
                     self.__initialization_failure = web.HTTPError(500)
-                self.implementations[http_method] = func
+                self.implementations[http_method] = typing.cast(
+                    RequestMethod, func
+                )
                 setattr(self, key, self._handle_request)
         self.SUPPORTED_METHODS = tuple(self.implementations.keys())  # type: ignore[assignment]
 
@@ -78,15 +110,36 @@ class RequestHandler(web.RequestHandler):
             name: self.__path_coercions[name](value)
             for name, value in path_kwargs.items()
         }
+        self.__handle_injections(sig.parameters, kwargs)
 
-        for name, param in sig.parameters.items():
-            if issubclass(
-                param.annotation, tornado.httputil.HTTPServerRequest
-            ):
-                kwargs[name] = self.request
-            elif issubclass(param.annotation, tornado.web.Application):
-                kwargs[name] = self.application
-            elif issubclass(param.annotation, tornado.web.RequestHandler):
-                kwargs[name] = self
+        result = await func(**kwargs)
+        if result is not None or sig.return_annotation == ReturnsNone:
+            self.send_response(result)
 
-        await func(**kwargs)
+    def send_response(
+        self, body: ResponseType | None, *_args: object, **_kwargs: object
+    ) -> None:
+        self.set_header('content-type', 'application/json; charset="UTF-8"')
+        self.write(
+            json.dumps(body, default=util.json_serialize_hook).encode('utf-8')
+        )
+
+    def __handle_injections(
+        self,
+        annotations: collections.abc.Mapping[str, inspect.Parameter],
+        kwargs: dict[str, object],
+    ) -> None:
+        injections = util.ClassMapping[object](
+            {
+                tornado.httputil.HTTPServerRequest: self.request,
+                tornado.web.Application: self.application,
+                tornado.web.RequestHandler: self,
+            }
+        )
+        kwargs.update(
+            {
+                name: injection
+                for name, param in annotations.items()
+                if (injection := injections.get(param.annotation, None))
+            }
+        )

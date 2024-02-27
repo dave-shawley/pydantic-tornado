@@ -1,12 +1,19 @@
 import collections.abc
+import datetime
+import ipaddress
 import logging
 import typing
+import uuid
+
+import yarl
 
 AnyType = type
 T = typing.TypeVar('T')
 DataInitializer = typing.Callable[
     [collections.abc.MutableMapping[AnyType, T]], None
 ]
+
+UNSPECIFIED = object()
 
 
 def get_logger_for(obj: object) -> logging.Logger:
@@ -46,11 +53,18 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
     """
 
     def __init__(
-        self, *, initialize_data: DataInitializer[T] | None = None
+        self,
+        data: collections.abc.Mapping[AnyType, T] | object = UNSPECIFIED,
+        *,
+        initialize_data: DataInitializer[T] | None = None,
     ) -> None:
         self._data: list[tuple[AnyType, T]] = []
         self._cache: dict[AnyType, T] = {}
         self._initialize_data = initialize_data
+        if data is not UNSPECIFIED:
+            data = typing.cast(collections.abc.Mapping[AnyType, T], data)
+            for key, value in data.items():
+                self[key] = value
         if self._initialize_data is not None:
             self.rebuild()
 
@@ -123,3 +137,51 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
 
     def __iter__(self) -> typing.Iterator[AnyType]:
         return iter(t[0] for t in self._data)
+
+
+@typing.runtime_checkable
+class HasIsoFormat(typing.Protocol):
+    def isoformat(self, spec: str = ...) -> str:
+        ...
+
+
+class NotSerializableError(TypeError):
+    def __init__(self, obj: object) -> None:
+        super().__init__(
+            f'Object of type {obj.__class__.__name__} is not serializable'
+        )
+
+
+def json_serialize_hook(obj: object) -> bool | float | int | str:
+    if isinstance(obj, HasIsoFormat):
+        return obj.isoformat()
+    if isinstance(
+        obj,
+        ipaddress.IPv4Address | ipaddress.IPv6Address | uuid.UUID | yarl.URL,
+    ):
+        return str(obj)
+    if isinstance(obj, datetime.timedelta):
+        return _format_isoduration(obj.total_seconds())
+
+    raise NotSerializableError(obj)
+
+
+def _format_isoduration(seconds: float) -> str:
+    if seconds == 0.0:  # noqa: PLR2004 -- magic value okay here
+        return 'PT0S'
+
+    parts = []
+    rem, prec = seconds, 6
+    for spec, reduction in [('S', 60), ('M', 60), ('H', 24)]:
+        rem, value = divmod(rem, reduction)
+        if value:
+            value = round(value, prec) if prec else int(value)
+            parts.append(f'{value}{spec}')
+        prec = 0
+
+    parts.append('T')
+    if rem:
+        parts.append(f'{int(rem)}D')
+    parts.append('P')
+
+    return ''.join(reversed(parts))

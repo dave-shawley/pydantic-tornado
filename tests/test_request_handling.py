@@ -1,9 +1,15 @@
+import datetime
 import http
+import ipaddress
+import json
 import typing
 import unittest.mock
+import uuid
 
+import yarl
 from pydantictornado import request_handling
-from tornado import http1connection, httputil, web
+from tornado import http1connection, httputil, testing, web
+from tornado.web import Application
 
 
 def create_request(**kwargs: object) -> httputil.HTTPServerRequest:
@@ -94,8 +100,9 @@ class RequestHandlerTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_that_handler_calls_implementation_functions(self) -> None:
         func = unittest.mock.AsyncMock()
+        func.return_value = None
         handler = self.create_request_handler(get=func)
-        response = await handler.get()  # type: ignore[func-returns-value]
+        response = await handler.get()
         func.assert_awaited_once()
         self.assertIsNone(response)
 
@@ -157,3 +164,110 @@ class ParameterProcessingTests(unittest.IsolatedAsyncioTestCase):
         )
         await handler.get(int_kwarg='42')
         self.tracker.assert_awaited_once_with(int_kwarg='42')
+
+
+class ResponseHandlingTests(testing.AsyncHTTPTestCase):
+    application: web.Application  # created in setUp()
+
+    def setUp(self) -> None:
+        self.application = None  # type: ignore[assignment]
+        super().setUp()
+
+    def get_app(self) -> Application:
+        self.application = web.Application([])
+        return self.application
+
+    def register_handler_function(
+        self,
+        pattern: str,
+        method: str,
+        # func: typing.Callable[
+        #     [], typing.Awaitable[request_handling.ResponseType] ],
+        func: request_handling.RequestMethod,
+    ) -> None:
+        self.application.add_handlers(
+            r'.*',
+            [
+                web.url(
+                    pattern,
+                    request_handling.RequestHandler,
+                    kwargs={method.lower(): func},
+                )
+            ],
+        )
+
+    def test_simple_responses(self) -> None:
+        expected: dict[str, bool | float | int | str | None] = {
+            'string': 'hello world',
+            'int': 42,
+            'bool': True,
+            'float': 22.0 / 7.0,
+            'null': None,
+        }
+
+        async def impl(**_kwargs: object) -> request_handling.ResponseType:
+            return expected
+
+        self.register_handler_function(r'/', 'GET', impl)
+        response = self.fetch('/', headers={'accept': 'application/json'})
+        self.assertEqual(200, response.code)
+        self.assertTrue(response.body, 'response body should not be empty')
+        self.assertEqual(
+            'application/json',
+            response.headers['content-type'].partition(';')[0].strip(),
+        )
+        body = json.loads(response.body.decode('utf-8'))
+        self.assertDictEqual(expected, body)
+
+    def test_returning_null(self) -> None:
+        async def impl() -> request_handling.ReturnsNone:
+            return None
+
+        self.register_handler_function(r'/', 'GET', impl)
+        response = self.fetch('/', headers={'accept': 'application/json'})
+        self.assertEqual(200, response.code)
+        self.assertEqual(
+            'application/json',
+            response.headers['content-type'].partition(';')[0].strip(),
+        )
+        self.assertEqual(b'null', response.body)
+
+    def test_library_types(self) -> None:
+        uid = uuid.uuid4()
+        now = datetime.datetime.now(datetime.UTC)
+        value: request_handling.ResponseType = [
+            now.date(),
+            now,
+            now.time(),
+            datetime.timedelta(
+                hours=1, minutes=2, seconds=3, microseconds=456789
+            ),
+            ipaddress.IPv4Address('127.0.0.1'),
+            ipaddress.IPv6Address('::1'),
+            uid,
+            yarl.URL('https://example.com'),
+        ]
+        expected = [
+            now.date().isoformat(),
+            now.isoformat(),
+            now.time().isoformat(),
+            'PT1H2M3.456789S',
+            '127.0.0.1',
+            '::1',
+            str(uid).lower(),
+            'https://example.com',
+        ]
+
+        async def impl(**_kwargs: object) -> request_handling.ResponseType:
+            return value
+
+        self.register_handler_function(r'/', 'GET', impl)
+        response = self.fetch('/', headers={'accept': 'application/json'})
+        self.assertEqual(200, response.code)
+        self.assertTrue(response.body, 'response body should not be empty')
+        self.assertEqual(
+            'application/json',
+            response.headers['content-type'].partition(';')[0].strip(),
+        )
+        body = json.loads(response.body.decode('utf-8'))
+        self.assertEqual(expected, body)

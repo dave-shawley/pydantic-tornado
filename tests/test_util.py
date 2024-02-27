@@ -1,4 +1,5 @@
 import collections.abc
+import datetime
 import unittest.mock
 
 from pydantictornado import util
@@ -109,3 +110,30 @@ class ClassMappingTests(unittest.TestCase):
         mapping.rebuild()
         self.assertEqual(len(mapping), 3)
         self.assertEqual(len(mapping_cache), 3)
+
+
+class JSONSerializationTests(unittest.TestCase):
+    def test_with_unhandled_type(self) -> None:
+        with self.assertRaisesRegex(TypeError, r'object is not serializable'):
+            util.json_serialize_hook(object())
+
+    def test_timedelta_serialization(self) -> None:
+        expectations = [
+            ('PT0S', datetime.timedelta()),
+            (
+                'P1DT2H3M4.567S',
+                datetime.timedelta(
+                    days=1, hours=2, minutes=3, seconds=4, milliseconds=567
+                ),
+            ),
+            ('PT12H', datetime.timedelta(days=0.5)),
+            ('PT0.5S', datetime.timedelta(seconds=0.5)),
+            ('PT0.123S', datetime.timedelta(milliseconds=123)),
+            ('PT0.123456S', datetime.timedelta(microseconds=123456)),
+        ]
+        for expected, value in expectations:
+            self.assertEqual(
+                expected,
+                util.json_serialize_hook(value),
+                f'Unexpected serialization for {value!r}',
+            )

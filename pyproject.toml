@@ -91,6 +91,7 @@ ignore = [
   "ISC",  # implicitly concat'ing strings makes format non-deterministic
   "PT",  # flake8-pytest-style
   "TRY400",  # logging.exception is not universally preferred
+  "UP040",  # mypy doesn't support type instead of typing.TypeAlias
 ]
 pycodestyle = {ignore-overlong-task-comments = true}
 select = ["ALL"]
