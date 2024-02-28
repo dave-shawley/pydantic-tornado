@@ -13,7 +13,15 @@ DataInitializer = typing.Callable[
     [collections.abc.MutableMapping[AnyType, T]], None
 ]
 
-UNSPECIFIED = object()
+
+class Unspecified:
+    """Simple type that is never true"""
+
+    def __bool__(self) -> bool:
+        return False
+
+
+UNSPECIFIED = Unspecified()
 
 
 def get_logger_for(obj: object) -> logging.Logger:

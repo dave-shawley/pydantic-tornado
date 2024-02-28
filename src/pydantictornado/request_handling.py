@@ -129,7 +129,7 @@ class RequestHandler(web.RequestHandler):
         annotations: collections.abc.Mapping[str, inspect.Parameter],
         kwargs: dict[str, object],
     ) -> None:
-        injections = util.ClassMapping[object](
+        mapping = util.ClassMapping[object](
             {
                 tornado.httputil.HTTPServerRequest: self.request,
                 tornado.web.Application: self.application,
@@ -138,8 +138,8 @@ class RequestHandler(web.RequestHandler):
         )
         kwargs.update(
             {
-                name: injection
+                name: value
                 for name, param in annotations.items()
-                if (injection := injections.get(param.annotation, None))
+                if (value := mapping.get(param.annotation, util.UNSPECIFIED))
             }
         )
