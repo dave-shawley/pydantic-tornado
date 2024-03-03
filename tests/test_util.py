@@ -2,7 +2,7 @@ import collections.abc
 import datetime
 import unittest.mock
 
-from pydantictornado import util
+from pydantictornado import errors, util
 
 
 class ClassMappingTests(unittest.TestCase):
@@ -64,9 +64,11 @@ class ClassMappingTests(unittest.TestCase):
         mapping[str] = 'string'
 
         for value in (1, 1.0, 'value', (1, 2), [1]):
-            with self.assertRaises(TypeError):
+            with self.assertRaises(errors.TypeRequiredError):
                 mapping[value] = str(value)  # type: ignore[index]
-            with self.assertRaises(TypeError, msg=f'not raised for {value!r}'):
+            with self.assertRaises(
+                errors.TypeRequiredError, msg=f'not raised for {value!r}'
+            ):
                 mapping.get(value)  # type: ignore[call-overload]
 
     def test_that_clear_resets_cache(self) -> None:

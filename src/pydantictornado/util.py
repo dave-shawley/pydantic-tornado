@@ -7,6 +7,8 @@ import uuid
 
 import yarl
 
+from pydantictornado import errors
+
 AnyType = type
 T = typing.TypeVar('T')
 DataInitializer = typing.Callable[
@@ -101,7 +103,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
                     base_cls,
                     error,
                 )
-                raise
+                raise errors.TypeRequiredError(item) from None
             else:
                 if is_subclass:
                     return index
@@ -109,21 +111,22 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         return None
 
     def __getitem__(self, item: AnyType) -> T:
-        if item in self._cache:
-            return self._cache[item]
-
-        if (index := self._probe(item)) is not None:
-            base_cls, coercion = self._data[index]
-            self._cache[item] = coercion
+        try:
+            coercion = self._cache[item]
+        except KeyError:
+            if (index := self._probe(item)) is not None:
+                base_cls, coercion = self._data[index]
+                self._cache[item] = coercion
+                return coercion
+            raise
+        except TypeError:
+            raise errors.TypeRequiredError(item) from None
+        else:
             return coercion
-
-        raise KeyError(item)
 
     def __setitem__(self, key: AnyType, value: T) -> None:
         if not isinstance(key, type):
-            t = type(key)  # type: ignore[unreachable]
-            msg = f'{key} is a {t.__module__}.{t.__name__}, not a type'
-            raise TypeError(msg)
+            raise errors.TypeRequiredError(key)
         self._cache.clear()
         if (index := self._probe(key)) is not None:
             self._data.insert(index, (key, value))
@@ -153,13 +156,6 @@ class HasIsoFormat(typing.Protocol):
         ...
 
 
-class NotSerializableError(TypeError):
-    def __init__(self, obj: object) -> None:
-        super().__init__(
-            f'Object of type {obj.__class__.__name__} is not serializable'
-        )
-
-
 def json_serialize_hook(obj: object) -> bool | float | int | str:
     if isinstance(obj, HasIsoFormat):
         return obj.isoformat()
@@ -171,7 +167,7 @@ def json_serialize_hook(obj: object) -> bool | float | int | str:
     if isinstance(obj, datetime.timedelta):
         return _format_isoduration(obj.total_seconds())
 
-    raise NotSerializableError(obj)
+    raise errors.NotSerializableError(obj)
 
 
 def _format_isoduration(seconds: float) -> str:
