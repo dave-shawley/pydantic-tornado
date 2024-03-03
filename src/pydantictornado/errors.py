@@ -30,3 +30,32 @@ class NotSerializableError(PydanticTornadoError, TypeError):
             f'is not serializable'
         )
         self.value = value
+
+
+class ConfigurationError(PydanticTornadoError):
+    pass
+
+
+class UnroutableParameterTypeError(PydanticTornadoError, TypeError):
+    def __init__(self, cls: type) -> None:
+        super().__init__(
+            f'Type {cls.__name__} is not recognized by {self.__module__}'
+        )
+
+
+class CoroutineRequiredError(ConfigurationError, ValueError):
+    def __init__(self, value: object) -> None:
+        value_description = getattr(value, '__name__', value)
+        super().__init__(f'{value_description!r} is not a coroutine')
+
+
+class NoHttpMethodsDefinedError(ConfigurationError):
+    def __init__(self) -> None:
+        super().__init__('At least one HTTP method implementation is required')
+
+
+class ValueParseError(PydanticTornadoError, ValueError):
+    def __init__(self, value: object, cls: type) -> None:
+        super().__init__(f'failed to parse {value!r} as a {cls.__name__}')
+        self.expected_type = cls
+        self.value = value
