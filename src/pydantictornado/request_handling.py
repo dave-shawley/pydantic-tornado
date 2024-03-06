@@ -13,7 +13,7 @@ from tornado import web
 
 from pydantictornado import util
 
-ReturnsNone: typing.TypeAlias = type(None)  # type: ignore[no-redef] # wtf?
+ReturnsNone = typing.Annotated[None, 'ReturnsNone']
 """Explicitly mark functions that return `None` as a value
 
 This is used to distinguish between explicitly returning `None`
@@ -106,10 +106,13 @@ class RequestHandler(web.RequestHandler):
         func = self.implementations[self.request.method]
         sig = inspect.signature(func, eval_str=True)
 
-        kwargs = {
-            name: self.__path_coercions[name](value)
-            for name, value in path_kwargs.items()
-        }
+        try:
+            kwargs = {
+                name: self.__path_coercions[name](value)
+                for name, value in path_kwargs.items()
+            }
+        except ValueError:
+            raise web.HTTPError(400) from None
         self.__handle_injections(sig.parameters, kwargs)
 
         result = await func(**kwargs)

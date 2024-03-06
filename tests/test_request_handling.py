@@ -7,7 +7,7 @@ import unittest.mock
 import uuid
 
 import yarl
-from pydantictornado import request_handling
+from pydantictornado import request_handling, routing
 from tornado import http1connection, httputil, testing, web
 from tornado.web import Application
 
@@ -271,3 +271,62 @@ class ResponseHandlingTests(testing.AsyncHTTPTestCase):
         )
         body = json.loads(response.body.decode('utf-8'))
         self.assertEqual(expected, body)
+
+
+class FullStackTests(testing.AsyncHTTPTestCase):
+    application: web.Application  # assigned during setUp
+
+    async def status_handler(
+        self, *, status: int, handler: web.RequestHandler
+    ) -> None:
+        self.handler_invoked = True
+        handler.set_status(status)
+
+    async def echo_handler(
+        self, *, request: httputil.HTTPServerRequest
+    ) -> dict[str, str]:
+        self.handler_invoked = True
+        return {
+            'method': request.method,  # type: ignore[dict-item] # not None
+            'url': request.full_url(),
+        }
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.handler_invoked = False
+
+    def get_app(self) -> Application:
+        echo = {
+            method: self.echo_handler
+            for method in ('get', 'put', 'post', 'delete', 'head', 'patch')
+        }
+        self.application = web.Application(
+            [
+                routing.Route(
+                    r'/status/(?P<status>.*)', get=self.status_handler
+                ),
+                routing.Route(r'/request', **echo),
+            ]
+        )
+        return self.application
+
+    def test_status_handler(self) -> None:
+        rsp = self.fetch('/status/200')
+        self.assertEqual(200, rsp.code)
+
+        rsp = self.fetch('/status/503')
+        self.assertEqual(503, rsp.code)
+
+    def test_request_echo(self) -> None:
+        rsp = self.fetch('/request')
+        self.assertEqual(200, rsp.code)
+        content_type = rsp.headers.get('content-type', 'binary/octet-stream')
+        self.assertEqual('application/json', content_type.split(';')[0])
+        body = json.loads(rsp.body.decode('utf-8'))
+        self.assertEqual('GET', body['method'])
+        self.assertEqual(self.get_url('/request'), body['url'])
+
+    def test_incorrect_parameter_type(self) -> None:
+        rsp = self.fetch('/status/whatever')
+        self.assertEqual(400, rsp.code)
+        self.assertFalse(self.handler_invoked, 'Handler should not be called')
