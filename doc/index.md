@@ -105,6 +105,8 @@ class CreateWidgetRequest(pydantic.BaseModel):
 
 class Widget(CreateWidgetRequest):
     id: pydantic.UUID4
+    name: str
+    description: str
     created_at: datetime.datetime
 
 
