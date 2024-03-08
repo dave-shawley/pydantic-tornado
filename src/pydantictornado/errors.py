@@ -33,10 +33,16 @@ class NotSerializableError(PydanticTornadoError, TypeError):
 
 
 class ConfigurationError(PydanticTornadoError):
-    pass
+    """Root of initialization errors
+
+    This category of errors occurs during route creation.
+
+    """
 
 
 class UnroutableParameterTypeError(PydanticTornadoError, TypeError):
+    """Unhandled type annotation on a request method"""
+
     def __init__(self, cls: type) -> None:
         super().__init__(
             f'Type {cls.__name__} is not recognized by {self.__module__}'
@@ -50,11 +56,15 @@ class CoroutineRequiredError(ConfigurationError, ValueError):
 
 
 class NoHttpMethodsDefinedError(ConfigurationError):
+    """Route does not have a handler defined"""
+
     def __init__(self) -> None:
         super().__init__('At least one HTTP method implementation is required')
 
 
 class ValueParseError(PydanticTornadoError, ValueError):
+    """Failed to parse a request parameter value according to its type"""
+
     def __init__(self, value: object, cls: type) -> None:
         super().__init__(f'failed to parse {value!r} as a {cls.__name__}')
         self.expected_type = cls

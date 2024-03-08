@@ -1,18 +1,33 @@
 site_name: "Pydantic Tornado"
+
 theme:
   name: mkdocs-material-adr
   features:
+    - navigation.footer
+    - navigation.indexes
     - navigation.instant
+    - navigation.tabs
+
 docs_dir: doc
+
 nav:
+  - index.md
+  - User's Guide:
+      - users-guide/examples.md
+      - users-guide/writing-handlers.md
+      - users-guide/injections.md
+  - Reference:
+      - reference/index.md
+      - reference/api.md
   - Explanation:
-      - Decisions: adr/index.md
-      - Records:
+      - adr/index.md
+      - Decision Records:
           - adr/0001-record-architecture-decisions.md
           - adr/0002-generate-documentation-using-mkdocs.md
-not_in_nav: |
-  index.md
+          - adr/0003-type-annotations.md
+
 plugins:
+  - autorefs
   - mkdocstrings:
       default_handler: python_xref
       enable_inventory: true
@@ -30,12 +45,20 @@ plugins:
             unwrap_annotated: true
   - mkdocs-material-adr/adr:
       graph_file: adr/index.md
+
 markdown_extensions:
-  - codehilite
-  - fenced_code
-  - sane_lists
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - sane_lists
+  - toc:
+      permalink: true

@@ -1,8 +1,57 @@
+---
+title: Pydantic-tornado
+hide:
+  - navigation
+---
+
+!!! warning
+
+    **DO NOT USE THIS LIBRARY ANYWHERE THAT WILL AFFECT CUSTOMERS OR BUSINESSES**
+
+    I reserve the right to stop working on this, change the name, completely reorganize the library, and
+    pretty much anything else at any time.
+
 This library brings some of the niceties of [fastapi] to Tornado applications. Instead of writing
 request handlers as stateful class instances, you write functions that use [pydantic] to define
 request and response bodies. This library takes care of the serialization and deserialization
 details for you. My goal is to write HTTP API servers that look a lot like [FastAPI] while reusing
 the pile of Tornado-based code that I'm already entrenched in.
+
+## Goals of this library
+
+1. write Tornado request handlers as type annotated functions
+2. hide the serialization and deserialization details
+3. expose OpenAPI specification that is usable and correct
+
+## Current status
+
+*Extremely immature* is a pretty good description. **Incomplete** and **untested** is another way to say it.
+I really want this to go past the vapourware stage, but it is little more than a proof-of-concept currently.
+
+=== "Routing"
+
+    - [X] Named path parameter handling
+    - [ ] Positional path parameter handling
+    - [ ] Pydantic parameter serialization
+
+=== "Request processing"
+
+    - [X] Injection of Tornado handling context
+    - [ ] Pydantic request body deserialization
+
+=== "Response processing"
+
+    - [X] JSON responses from simple types
+    - [ ] [Proactive content negotiation](https://www.rfc-editor.org/rfc/rfc7231#section-3.4.1)
+    - [ ] Pydantic response serialization
+
+=== "OpenAPI"
+
+    - [X] OpenAPI schema from basic types
+    - [ ] OpenAPI schema from Pydantic
+    - [ ] Handler for generated OpenAPI JSON
+
+## Sales pitch
 
 Consider the following naive implementation of a simple CRUD handler.
 
@@ -118,11 +167,6 @@ is a little magical at first -- think of passing light through a prism as oppose
 It quickly becomes second nature and does the right thing. It can be simpler than what FastAPI uses by constraining
 the functionality slightly. You'll see what I'm talking about.
 
-# Goals of this library
-
-1. write request handlers as type annotated functions
-2. hide the serialization and deserialization details
-3. expose OpenAPI specification that is usable and correct
 
 [fastapi]: https://fastapi.tiangolo.com/
 [pydantic]: https://docs.pydantic.dev/2.5/
