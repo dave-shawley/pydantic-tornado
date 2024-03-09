@@ -10,6 +10,7 @@ theme:
     - navigation.indexes
     - navigation.instant
     - navigation.tabs
+    - search.suggest
   icon:
     repo: fontawesome/brands/github
 
@@ -50,6 +51,7 @@ plugins:
             unwrap_annotated: true
   - mkdocs-material-adr/adr:
       graph_file: adr/index.md
+  - search
 
 markdown_extensions:
   - admonition
