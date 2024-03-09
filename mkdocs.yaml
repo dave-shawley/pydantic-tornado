@@ -1,4 +1,7 @@
 site_name: "Pydantic Tornado"
+site_author: "Dave Shawley"
+repo_url: "https://github.com/dave-shawley/pydantic-tornado"
+repo_name: "dave-shawley/pydantic-tornado"
 
 theme:
   name: mkdocs-material-adr
@@ -7,6 +10,8 @@ theme:
     - navigation.indexes
     - navigation.instant
     - navigation.tabs
+  icon:
+    repo: fontawesome/brands/github
 
 docs_dir: doc
 
