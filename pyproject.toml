@@ -49,6 +49,7 @@ dependencies = [
 python = "python3.12"
 
 [tool.hatch.envs.default.scripts]
+github-pages = ["mkdocs gh-deploy --force"]
 test = [
   "pre-commit run --all-files",
   "mypy -p pydantictornado -p tests",
