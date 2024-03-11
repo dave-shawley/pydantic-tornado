@@ -75,16 +75,31 @@ class Route(tornado.routing.URLSpec):
         if path_groups:
             target_kwargs['path_types'] = path_types
         for impl in self._implementations.values():
-            sig = inspect.signature(impl)
-            for name, param in sig.parameters.items():
-                if name in pattern.groupindex:
-                    path_types[name] = _build_coercion(param)
+            self._process_path_parameters(impl, pattern, path_types)
 
         super().__init__(
             pattern,
             handler=request_handling.RequestHandler,
             kwargs=target_kwargs,
         )
+
+    @staticmethod
+    def _process_path_parameters(
+        impl: request_handling.RequestMethod,
+        pattern: re.Pattern[str],
+        path_types: dict[str, PathConverter],
+    ) -> None:
+        sig = inspect.signature(impl)
+        for name, param in sig.parameters.items():
+            if name in pattern.groupindex:
+                coercion = _build_coercion(param)
+                try:
+                    existing = path_types[name]
+                except KeyError:
+                    path_types[name] = coercion
+                else:
+                    if existing != coercion:
+                        raise errors.PathTypeMismatchError(pattern, name)
 
 
 def _build_coercion(param: inspect.Parameter) -> PathConverter:

@@ -193,3 +193,19 @@ class RouteTests(unittest.TestCase):
                 msg=f'_parse_datetime should have failed for {str_value!r}',
             ):
                 coercion_func(str_value)
+
+    def test_incongruent_parameter_types(self) -> None:
+        async def int_impl(*, _id: int) -> None:
+            pass
+
+        async def another_int_impl(*, _id: int) -> None:
+            pass
+
+        async def str_impl(*, _id: str) -> None:
+            pass
+
+        with self.assertRaises(errors.PathTypeMismatchError):
+            routing.Route(r'/(?P<_id>.*)', get=int_impl, delete=str_impl)
+
+        # should not raise
+        routing.Route(r'/(?P<_id>.*)', get=int_impl, delete=another_int_impl)

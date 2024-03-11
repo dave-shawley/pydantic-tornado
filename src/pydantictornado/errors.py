@@ -1,3 +1,6 @@
+import re
+
+
 class PydanticTornadoError(Exception):
     """Root of all errors raised by this library"""
 
@@ -69,3 +72,13 @@ class ValueParseError(PydanticTornadoError, ValueError):
         super().__init__(f'failed to parse {value!r} as a {cls.__name__}')
         self.expected_type = cls
         self.value = value
+
+
+class PathTypeMismatchError(ConfigurationError):
+    """Method implementations have different path variable types"""
+
+    def __init__(self, path_pattern: re.Pattern[str], path_var: str) -> None:
+        super().__init__(
+            f'Implementations for {path_pattern.pattern!r} disagree '
+            f'on types for {path_var!r}'
+        )
