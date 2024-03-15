@@ -2,6 +2,7 @@ import collections.abc
 import datetime
 import functools
 import ipaddress
+import re
 import types
 import typing
 import uuid
@@ -27,6 +28,11 @@ class SchemaExtra:
 
 # this is used to detect annotated types in _describe_type
 AnnotationType = type(typing.Annotated[object, 'ignored'])
+
+
+class OpenAPIPath(pydantic.BaseModel):
+    path: str = ''
+    patterns: dict[str, str] = pydantic.Field(default_factory=dict)
 
 
 def _initialize_type_map(
@@ -169,3 +175,63 @@ def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:
                     extra.update(meta)
 
     return unwrapped, extra
+
+
+def _translate_path_pattern(pattern: re.Pattern[str]) -> OpenAPIPath:
+    r"""Translate a path regex into an OpenAPI path
+
+    This function tries to parse a Tornado path expression into a
+    matching OpenAPI operation path while capturing the underlying
+    regular expression patterns. Not all patterns supported by
+    the [re][] module implements. If you stumble into an unsupported
+    expression, it will be left as-is and a warning is issued.
+
+    >>> info = _translate_path_pattern(re.compile(
+    ...    r'/projects/(?P<id>[1-9]\d*)/facts/(?P<fact_id>\d+)'))
+    >>> info.path
+    '/projects/{id}/facts/fact_id'
+    >>> info.patterns['id']
+    '[1-9]\d*'
+    >>> info.patterns['fact_id']
+    '\d+'
+
+    """
+    working = pattern.pattern.removesuffix('$')
+
+    patterns: dict[str, str] = {}
+    while match := re.search(r'\((?P<part>\?[^()]*)\)', working):
+        quantifier, value = match['part'][:2], match['part'][2:]
+        start, end = match.span()
+        if quantifier == '?P':
+            if match := re.search(r'<(?P<name>[^>]+)>', value):
+                value = value[match.end() :]
+                patterns[match['name']] = value
+                value = f'{{{match["name"]}}}'
+            elif value.startswith('='):
+                value = f'{{{value[1:]}}}'
+            else:  # pragma: nocover
+                raise RuntimeError('Invalid regular expression')  # noqa: TRY003
+        elif quantifier == '?#':
+            value = ''
+        elif quantifier == '?:':
+            # Escape the parens here to avoid the top-level
+            # matching pattern from reprocessing this value.
+            value = f'\x01{value}\x02'
+        else:
+            warnings.warn(
+                rf'{quantifier!r} is not implemented and will result in '
+                rf'an invalid OpenAPI path expression',
+                stacklevel=2,
+            )
+        working = working[:start] + value + working[end:]
+
+    # reverse the parenthesis escaping in the path and every
+    # parsed expression
+    working = working.replace('\x01', '(').replace('\x02', ')')
+    for var, patn in patterns.items():
+        patterns[var] = patn.replace('\x01', '(').replace('\x02', ')')
+
+    return OpenAPIPath(
+        patterns=patterns,
+        path='/' if working == '/?' else working.removesuffix('/?'),
+    )

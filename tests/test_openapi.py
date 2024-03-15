@@ -1,5 +1,6 @@
 import datetime
 import ipaddress
+import re
 import typing
 import unittest
 import uuid
@@ -264,3 +265,88 @@ class OpenAPIAnnotationTests(unittest.TestCase):
             },
             openapi.describe_type(tuple[default_price, list[price]]),
         )
+
+
+class OpenAPIRegexTests(unittest.TestCase):
+    @staticmethod
+    def translate_path_pattern(pattern: str) -> openapi.OpenAPIPath:
+        return openapi._translate_path_pattern(re.compile(pattern))  # noqa: SLF001
+
+    def test_simple_paths(self) -> None:
+        result = self.translate_path_pattern(r'/items/(?P<item_id>.*)')
+        self.assertEqual('/items/{item_id}', result.path)
+        self.assertEqual('.*', result.patterns['item_id'])
+
+        result = self.translate_path_pattern(
+            r'/projects/(?P<id>[1-9]\d*)/facts/(?P<fact_id>\d+)'
+        )
+        self.assertEqual('/projects/{id}/facts/{fact_id}', result.path)
+        self.assertEqual(r'[1-9]\d*', result.patterns['id'])
+        self.assertEqual(r'\d+', result.patterns['fact_id'])
+
+        result = self.translate_path_pattern('/status/')
+        self.assertEqual('/status/', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+    def test_path_cleanup(self) -> None:
+        result = self.translate_path_pattern('/status/?')
+        self.assertEqual('/status', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+        result = self.translate_path_pattern('/status$')
+        self.assertEqual('/status', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+        result = self.translate_path_pattern('/status/?$')
+        self.assertEqual('/status', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+        result = self.translate_path_pattern('/status?$')
+        self.assertEqual('/status?', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+        result = self.translate_path_pattern('/?$')
+        self.assertEqual('/', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+    def test_noncapture_removals(self) -> None:
+        result = self.translate_path_pattern(
+            r'/(?P<ipv4>[1-9][0-9]{0,2}(?:\.[1-9][0-9]+){3})'
+        )
+        self.assertEqual('/{ipv4}', result.path)
+        self.assertEqual(
+            r'[1-9][0-9]{0,2}(\.[1-9][0-9]+){3}', result.patterns['ipv4']
+        )
+
+        result = self.translate_path_pattern(r'/(?P<val>(?:outer(?:inner)))')
+        self.assertEqual('/{val}', result.path)
+        self.assertEqual('(outer(inner))', result.patterns['val'])
+
+    def test_comment_removal(self) -> None:
+        result = self.translate_path_pattern(
+            r'/prefix(?#are these used?)/suffix'
+        )
+        self.assertEqual('/prefix/suffix', result.path)
+        self.assertDictEqual({}, result.patterns)
+
+        result = self.translate_path_pattern(
+            r'/sleep/(?P<delay>(?#in millis)\d+)'
+        )
+        self.assertEqual('/sleep/{delay}', result.path)
+        self.assertEqual(r'\d+', result.patterns['delay'])
+
+    def test_back_references(self) -> None:
+        result = self.translate_path_pattern(r'/(?P<start>one)/two/(?P=start)')
+        self.assertEqual('/{start}/two/{start}', result.path)
+        self.assertEqual('one', result.patterns['start'])
+
+    def test_unhandled_cases_emit_warnings(self) -> None:
+        unhandled = [
+            r'/Isaac(?=Asimov)',
+            r'/Isaac(?!Asimov)',
+            r'/(?<=-)\w+',
+            r'/(?<!abc)def',
+        ]
+        for pattern in unhandled:
+            with self.assertWarns(UserWarning):
+                self.translate_path_pattern(pattern)
