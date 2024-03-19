@@ -1,7 +1,9 @@
 import collections.abc
 import datetime
+import typing
 import unittest.mock
 
+import pydantic
 from pydantictornado import errors, util
 
 
@@ -139,3 +141,63 @@ class JSONSerializationTests(unittest.TestCase):
                 util.json_serialize_hook(value),
                 f'Unexpected serialization for {value!r}',
             )
+
+    def test_pydantic_serialization(self) -> None:
+        class Widget(pydantic.BaseModel):
+            name: str
+            slug: str
+
+        serialized = util.json_serialize_hook(
+            Widget(name='Something Useful', slug='something-useful')
+        )
+        self.assertDictEqual(
+            {'name': 'Something Useful', 'slug': 'something-useful'},
+            typing.cast(dict[object, object], serialized),
+        )
+
+    def test_pydantic_none_field_omission(self) -> None:
+        class Widget(util.FieldOmittingMixin, pydantic.BaseModel):
+            OMIT_IF_NONE = ('description',)
+            name: str
+            slug: str
+            description: str | None = None
+
+        serialized = util.json_serialize_hook(
+            Widget(name='Something Useful', slug='something-useful')
+        )
+        self.assertDictEqual(
+            {'name': 'Something Useful', 'slug': 'something-useful'},
+            typing.cast(dict[object, object], serialized),
+        )
+
+        serialized = util.json_serialize_hook(
+            Widget(
+                name='Something Useful',
+                slug='something-useful',
+                description='',
+            )
+        )
+        self.assertDictEqual(
+            {
+                'name': 'Something Useful',
+                'slug': 'something-useful',
+                'description': '',
+            },
+            typing.cast(dict[object, object], serialized),
+        )
+
+    def test_pydantic_field_omission_with_aliases(self) -> None:
+        class Widget(util.FieldOmittingMixin, pydantic.BaseModel):
+            OMIT_IF_NONE = ('description',)
+            id_: int = pydantic.Field(alias='id')
+            name: str
+            slug: str
+            description: str | None = None
+
+        serialized = util.json_serialize_hook(
+            Widget(id=1, name='Something Useful', slug='something-useful')
+        )
+        self.assertDictEqual(
+            {'id': 1, 'name': 'Something Useful', 'slug': 'something-useful'},
+            typing.cast(dict[object, object], serialized),
+        )

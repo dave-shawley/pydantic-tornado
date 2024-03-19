@@ -5,6 +5,7 @@ import logging
 import typing
 import uuid
 
+import pydantic
 import yarl
 
 from pydantictornado import errors
@@ -30,6 +31,40 @@ def get_logger_for(obj: object) -> logging.Logger:
     """Retrieve a logger associated with `obj.__class__`"""
     cls = obj.__class__
     return logging.getLogger(cls.__module__).getChild(cls.__name__)
+
+
+class FieldOmittingMixin(pydantic.BaseModel):
+    """Mix this into pydantic models to omit `None` fields
+
+    The fields named in `OMIT_IF_NONE` will be ignored during
+    serialization if their value is `None`.
+
+    The fields named in `OMIT_IF_EMPTY` will be ignored during
+    serialization if their value is *empty*. This is only relevant
+    for instances that implement [collections.abc.Sized][].
+
+    """
+
+    OMIT_IF_EMPTY: typing.ClassVar[tuple[str, ...]] = ()
+    OMIT_IF_NONE: typing.ClassVar[tuple[str, ...]] = ()
+
+    @pydantic.model_serializer(mode='wrap')
+    def _omit_fields(
+        self,
+        handler: typing.Callable[
+            [typing.Self, pydantic.SerializationInfo], dict[str, object]
+        ],
+        info: pydantic.SerializationInfo,
+    ) -> dict[str, object]:
+        result = handler(self, info)
+        for name in self.model_fields:
+            value = result.get(name, None)
+            empty = isinstance(value, collections.abc.Sized) and not len(value)
+            if (name in self.OMIT_IF_NONE and value is None) or (
+                name in self.OMIT_IF_EMPTY and empty
+            ):
+                result.pop(name)
+        return result
 
 
 class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
@@ -93,6 +128,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
 
     def _probe(self, item: AnyType) -> int | None:
         index = 0
+        item = _remove_annotations(item)
         for base_cls, _ in self._data:
             try:
                 is_subclass = issubclass(item, base_cls)
@@ -111,6 +147,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         return None
 
     def __getitem__(self, item: AnyType) -> T:
+        item = _remove_annotations(item)
         try:
             coercion = self._cache[item]
         except KeyError:
@@ -125,6 +162,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
             return coercion
 
     def __setitem__(self, key: AnyType, value: T) -> None:
+        key = _remove_annotations(key)
         if not isinstance(key, type):
             raise errors.TypeRequiredError(key)
         self._cache.clear()
@@ -135,6 +173,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         self._cache[key] = value
 
     def __delitem__(self, key: AnyType) -> None:
+        key = _remove_annotations(key)
         self._cache.clear()
         for idx, (base_cls, _) in enumerate(self._data):
             if base_cls is key:
@@ -156,7 +195,9 @@ class HasIsoFormat(typing.Protocol):
         ...
 
 
-def json_serialize_hook(obj: object) -> bool | float | int | str:
+def json_serialize_hook(
+    obj: object
+) -> bool | float | int | str | dict[str, object]:
     if isinstance(obj, HasIsoFormat):
         return obj.isoformat()
     if isinstance(
@@ -166,6 +207,8 @@ def json_serialize_hook(obj: object) -> bool | float | int | str:
         return str(obj)
     if isinstance(obj, datetime.timedelta):
         return _format_isoduration(obj.total_seconds())
+    if isinstance(obj, pydantic.BaseModel):
+        return obj.model_dump(by_alias=True)
 
     raise errors.NotSerializableError(obj)
 
@@ -189,3 +232,10 @@ def _format_isoduration(seconds: float) -> str:
     parts.append('P')
 
     return ''.join(reversed(parts))
+
+
+def _remove_annotations(t: AnyType) -> AnyType:
+    if typing.get_origin(t) == typing.Annotated:
+        cls, *_ = typing.get_args(t)
+        return typing.cast(AnyType, cls)
+    return t

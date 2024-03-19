@@ -1,12 +1,15 @@
 import collections.abc
 import contextlib
 import datetime
+import enum
+import functools
 import inspect
 import ipaddress
 import re
 import typing
 import uuid
 
+import pydantic
 import tornado.routing
 import tornado.web
 
@@ -23,22 +26,72 @@ _HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
 PathConverter = typing.Callable[[str], typing.Any]
 
 
+class ParameterStyle(enum.StrEnum):
+    """Parameter encoding style
+
+    https://spec.openapis.org/oas/latest.html#style-values
+    """
+
+    MATRIX = 'matrix'
+    LABEL = 'label'
+    FORM = 'form'
+    SIMPLE = 'simple'
+    SPACE_DELIMITED = 'spaceDelimited'
+    PIPE_DELIMITED = 'pipeDelimited'
+    DEEP_OBJECT = 'deepObject'
+
+
+class ParameterAnnotation(pydantic.BaseModel):
+    """Add extended OpenAPI information to parmeter types
+
+    https://spec.openapis.org/oas/latest.html#parameter-object
+    """
+
+    description: str | None = None
+    schema_: dict[str, object] = pydantic.Field(default_factory=dict)
+    style: ParameterStyle | None = None
+    explode: bool | None = None
+
+
 def _initialize_converters(
     m: collections.abc.MutableMapping[type, PathConverter]
 ) -> None:
-    m.update(
-        {
-            bool: lambda s: _convert_bool(s),
-            float: lambda s: float(s),
-            int: lambda s: int(s, 10),
-            str: lambda s: s,
-            uuid.UUID: lambda s: uuid.UUID(s),
-            datetime.date: lambda s: _parse_datetime(s).date(),
-            datetime.datetime: lambda s: _parse_datetime(s),
-            ipaddress.IPv4Address: lambda s: ipaddress.IPv4Address(s),
-            ipaddress.IPv6Address: lambda s: ipaddress.IPv6Address(s),
-        }
-    )
+    mapping = {
+        bool: typing.Annotated[
+            lambda s: _convert_bool(s),
+            ParameterAnnotation(schema_={'type': 'boolean'}),
+        ],
+        float: typing.Annotated[
+            float, ParameterAnnotation(schema_={'type': 'float'})
+        ],
+        int: typing.Annotated[
+            functools.partial(int, base=10),
+            ParameterAnnotation(schema_={'type': 'int'}),
+        ],
+        str: typing.Annotated[
+            lambda s: s, ParameterAnnotation(schema_={'type': 'string'})
+        ],
+        uuid.UUID: uuid.UUID,
+        datetime.date: typing.Annotated[
+            lambda s: _parse_datetime(s).date(),
+            ParameterAnnotation(schema_={'type': 'string', 'format': 'date'}),
+        ],
+        datetime.datetime: typing.Annotated[
+            lambda s: _parse_datetime(s),
+            ParameterAnnotation(
+                schema_={'type': 'string', 'format': 'date-time'}
+            ),
+        ],
+        ipaddress.IPv4Address: typing.Annotated[
+            ipaddress.IPv4Address,
+            ParameterAnnotation(schema_={'type': 'string', 'format': 'ipv4'}),
+        ],
+        ipaddress.IPv6Address: typing.Annotated[
+            ipaddress.IPv6Address,
+            ParameterAnnotation(schema_={'type': 'string', 'format': 'ipv6'}),
+        ],
+    }
+    m.update(mapping)  # type: ignore[arg-type]
 
 
 _converters = util.ClassMapping[PathConverter](
@@ -104,9 +157,20 @@ class Route(tornado.routing.URLSpec):
 
 def _build_coercion(param: inspect.Parameter) -> PathConverter:
     try:
-        return _converters[param.annotation]
+        coercion = _converters[param.annotation]
     except KeyError:
         raise errors.UnroutableParameterTypeError(param.annotation) from None
+    else:
+        if typing.get_origin(coercion) == typing.Annotated:
+            origin = coercion.__origin__  # type: ignore[attr-defined]
+            metadata = (
+                *coercion.__metadata__,  # type: ignore[attr-defined]
+                *getattr(param.annotation, '__metadata__', ()),
+            )
+            return typing.cast(
+                PathConverter, typing.Annotated[origin, *metadata]
+            )
+        return coercion
 
 
 def _parse_datetime(value: str) -> datetime.datetime:

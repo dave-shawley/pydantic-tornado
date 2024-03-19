@@ -6,8 +6,10 @@ import unittest
 import uuid
 
 import pydantic
+import tornado.routing
 import yarl
-from pydantictornado import openapi
+from pydantictornado import openapi, routing
+from tornado import httputil, web
 
 
 class DescribeTypeTests(unittest.TestCase):
@@ -350,3 +352,134 @@ class OpenAPIRegexTests(unittest.TestCase):
         for pattern in unhandled:
             with self.assertWarns(UserWarning):
                 self.translate_path_pattern(pattern)
+
+
+class DescribeApiTests(unittest.TestCase):
+    def test_application_without_routes(self) -> None:
+        description = openapi.describe_api(web.Application())
+        self.assertEqual('3.1.0', description.openapi)
+        self.assertEqual({}, description.info)
+        self.assertEqual(
+            'https://spec.openapis.org/oas/3.1/dialect/base',
+            description.jsonSchemaDialect,
+        )
+        self.assertEqual([], description.servers)
+        self.assertEqual({}, description.paths)
+        self.assertEqual({}, description.components)
+        self.assertEqual([], description.tags)
+
+    def test_application_with_our_routes(self) -> None:
+        # fmt: off
+        async def delay(_v: float) -> None: pass
+        async def find_item(_id: uuid.UUID) -> None: pass
+        async def status() -> dict[str, str]: return {}
+        # fmt: on
+
+        app = web.Application(
+            [
+                routing.Route(r'/delay/(?P<_v>\d(?:\.\d+))', get=delay),
+                routing.Route(r'/items/(?P<_id>.*)', get=find_item),
+                routing.Route(r'/status', get=status),
+            ]
+        )
+        description = openapi.describe_api(app).model_dump(by_alias=True)
+        self.assertSetEqual(
+            {'/delay/{_v}', '/status', '/items/{_id}'},
+            set(description['paths'].keys()),
+        )
+
+        self.assertNotIn('parameters', description['paths']['/status'])
+        self.assertEqual(
+            1, len(description['paths']['/delay/{_v}']['parameters'])
+        )
+        self.assertDictEqual(
+            {
+                'name': '_v',
+                'in': 'path',
+                'required': True,
+                'deprecated': False,
+                'schema': {'type': 'float'},
+            },
+            description['paths']['/delay/{_v}']['parameters'][0],
+        )
+
+        self.assertEqual(
+            1, len(description['paths']['/items/{_id}']['parameters'])
+        )
+        self.assertDictEqual(
+            {
+                'name': '_id',
+                'in': 'path',
+                'required': True,
+                'deprecated': False,
+                'schema': {'type': 'string', 'pattern': '.*'},
+            },
+            description['paths']['/items/{_id}']['parameters'][0],
+        )
+
+    def test_application_with_urlspec_routes(self) -> None:
+        app = web.Application(
+            [web.url(r'/items/(?P<id>.*)', web.RequestHandler)]
+        )
+        description = openapi.describe_api(app).model_dump(by_alias=True)
+        self.assertSetEqual(
+            {'/items/{id}'},
+            set(description['paths'].keys()),
+        )
+        self.assertEqual(
+            1, len(description['paths']['/items/{id}']['parameters'])
+        )
+        self.assertDictEqual(
+            {
+                'name': 'id',
+                'in': 'path',
+                'required': True,
+                'deprecated': False,
+                'schema': {'type': 'string', 'pattern': '.*'},
+            },
+            description['paths']['/items/{id}']['parameters'][0],
+        )
+
+    def test_other_route_types(self) -> None:
+        class MethodMatcher(tornado.routing.Matcher):
+            def __init__(self, http_method: str) -> None:
+                self.method = http_method
+
+            def match(
+                self, request: httputil.HTTPServerRequest
+            ) -> None | dict[str, object]:
+                if request.method == self.method:
+                    return {}
+                return None
+
+        class MethodMatchingRoute(tornado.routing.Rule):
+            def __init__(self) -> None:
+                super().__init__(MethodMatcher('GET'), object())
+
+        app = web.Application([MethodMatchingRoute()])
+        with self.assertWarns(UserWarning):
+            description = openapi.describe_api(app)
+        self.assertEqual(0, len(description.paths))
+
+
+class DescribePathTests(unittest.TestCase):
+    def test_mixed_annotations(self) -> None:
+        IdType = typing.Annotated[  # noqa: N806 -- variable named as class
+            int,
+            openapi.SchemaExtra(summary='Unique item identifer'),
+            routing.ParameterAnnotation(description='More information here'),
+            'another annotation that we ignore',
+        ]
+
+        async def op(item_id: IdType) -> IdType:
+            return item_id
+
+        description = openapi._describe_path(  # noqa: SLF001 private use ok
+            routing.Route(r'/items/(?P<item_id>\d+)', get=op),
+            openapi.OpenAPIPath(
+                path='/items/{item_id}', patterns={'item_id': r'\d+'}
+            ),
+        )
+        self.assertEqual(
+            'More information here', description.parameters[0].description
+        )

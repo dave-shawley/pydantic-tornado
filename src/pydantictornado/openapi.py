@@ -1,4 +1,5 @@
 import collections.abc
+import contextlib
 import datetime
 import functools
 import ipaddress
@@ -9,9 +10,11 @@ import uuid
 import warnings
 
 import pydantic
+import tornado.routing
+import tornado.web
 import yarl
 
-from pydantictornado import util
+from pydantictornado import routing, util
 
 
 class SchemaExtra:
@@ -33,6 +36,36 @@ AnnotationType = type(typing.Annotated[object, 'ignored'])
 class OpenAPIPath(pydantic.BaseModel):
     path: str = ''
     patterns: dict[str, str] = pydantic.Field(default_factory=dict)
+
+
+class Parameter(util.FieldOmittingMixin, pydantic.BaseModel):
+    """OpenAPI Parameter Object
+
+    https://spec.openapis.org/oas/latest.html#parameter-object
+    """
+
+    OMIT_IF_NONE = ('description', 'explode', 'style')
+    name: str
+    in_: str = pydantic.Field(alias='in')
+    description: str | None = None
+    required: bool = False
+    deprecated: bool = False
+    schema_: dict[str, object] | None = pydantic.Field(None, alias='schema')
+    style: routing.ParameterStyle | None = None
+    explode: bool | None = None
+
+
+class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
+    """OpenAPI Path Item Object
+
+    https://spec.openapis.org/oas/latest.html#path-item-object
+    """
+
+    OMIT_IF_NONE = ('summary', 'description')
+    OMIT_IF_EMPTY = ('parameters',)
+    summary: str | None = None
+    description: str | None = None
+    parameters: list[Parameter] = pydantic.Field(default_factory=list)
 
 
 def _initialize_type_map(
@@ -67,6 +100,45 @@ _simple_type_map = util.ClassMapping[dict[str, typing.Any]](
 Describable = types.GenericAlias | types.UnionType | type | object
 Description = collections.abc.Mapping[str, typing.Any]
 MutableDescription = dict[str, typing.Any]
+
+
+class APIDescription(pydantic.BaseModel):
+    """Top-level OpenAPI Object
+
+    https://spec.openapis.org/oas/latest.html#openapi-object
+    """
+
+    openapi: str
+    info: dict[str, object]
+    jsonSchemaDialect: str  # noqa: N815 -- name intentionally camelCased
+    servers: list[dict[str, object]]
+    paths: dict[str, PathDescription]
+    components: dict[str, dict[str, object]]
+    tags: list[dict[str, object]]
+
+
+def describe_api(application: tornado.web.Application) -> APIDescription:
+    """Describe an application in an OpenAPI specification"""
+    spec = APIDescription(
+        openapi='3.1.0',
+        info={},
+        jsonSchemaDialect='https://spec.openapis.org/oas/3.1/dialect/base',
+        servers=[],
+        paths={},
+        components={},
+        tags=[],
+    )
+    for rule in application.wildcard_router.rules:
+        if isinstance(rule, routing.Route | tornado.routing.URLSpec):
+            path = _translate_path_pattern(rule.regex)
+            spec.paths[path.path] = _describe_path(rule, path)
+        else:
+            warnings.warn(
+                f'Rule {rule!r} not processed, unhandled rule '
+                f'class {rule.__class__.__name__}',
+                stacklevel=2,
+            )
+    return spec
 
 
 def describe_type(t: Describable) -> Description:
@@ -159,6 +231,39 @@ def _describe_collection(
     return description
 
 
+def _describe_path(
+    route: tornado.routing.URLSpec, path_info: OpenAPIPath
+) -> PathDescription:
+    desc = PathDescription()
+    for name, pattern in path_info.patterns.items():
+        param = Parameter.model_validate(
+            {
+                'name': name,
+                'in': 'path',
+                'required': True,
+                'schema': {'type': 'string'},
+            }
+        )
+        # convince mypy that schema is not None
+        if param.schema_ is None:
+            continue  # pragma: nocover
+        with contextlib.suppress(KeyError):
+            if route.kwargs:
+                param_info = route.kwargs['path_types'][name]
+                for item in getattr(param_info, '__metadata__', []):
+                    if isinstance(item, SchemaExtra):
+                        param.schema_.update(item.extra)
+                    elif isinstance(item, routing.ParameterAnnotation):
+                        param.schema_.update(item.schema_)
+                        param.description = (
+                            param.description or item.description
+                        )
+        if param.schema_.get('type', '') == 'string':
+            param.schema_['pattern'] = pattern
+        desc.parameters.append(param)
+    return desc
+
+
 def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:
     unwrapped = t
     extra = SchemaExtra()
@@ -219,8 +324,8 @@ def _translate_path_pattern(pattern: re.Pattern[str]) -> OpenAPIPath:
             value = f'\x01{value}\x02'
         else:
             warnings.warn(
-                rf'{quantifier!r} is not implemented and will result in '
-                rf'an invalid OpenAPI path expression',
+                f'{quantifier!r} is not implemented and will result in '
+                f'an invalid OpenAPI path expression',
                 stacklevel=2,
             )
         working = working[:start] + value + working[end:]
