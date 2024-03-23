@@ -16,7 +16,7 @@ from pydantictornado import errors, request_handling, util
 
 _HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
 
-PathConverter = typing.Callable[[str], typing.Any]
+_PathConverter = typing.Callable[[str], typing.Any]
 
 
 class ParameterStyle(enum.StrEnum):
@@ -47,7 +47,7 @@ class ParameterAnnotation(pydantic.BaseModel):
 
 
 def _initialize_converters(
-    m: collections.abc.MutableMapping[type, PathConverter]
+    m: collections.abc.MutableMapping[type, _PathConverter]
 ) -> None:
     mapping = {
         bool: typing.Annotated[
@@ -87,7 +87,7 @@ def _initialize_converters(
     m.update(mapping)  # type: ignore[arg-type]
 
 
-_converters = util.ClassMapping[PathConverter](
+_converters = util.ClassMapping[_PathConverter](
     initialize_data=_initialize_converters
 )
 
@@ -116,12 +116,12 @@ class Route(tornado.routing.URLSpec):
         if isinstance(pattern, str):
             pattern = re.compile(pattern.removesuffix('$') + '$')
 
-        path_types: dict[str, PathConverter] = {}
+        path_types: dict[str, _PathConverter] = {}
         path_groups = pattern.groupindex
         if path_groups:
             target_kwargs['path_types'] = path_types
         for impl in self._implementations.values():
-            self._process_path_parameters(impl, pattern, path_types)
+            _process_path_parameters(impl, pattern, path_types)
 
         super().__init__(
             pattern,
@@ -129,26 +129,26 @@ class Route(tornado.routing.URLSpec):
             kwargs=target_kwargs,
         )
 
-    @staticmethod
-    def _process_path_parameters(
-        impl: request_handling.RequestMethod,
-        pattern: re.Pattern[str],
-        path_types: dict[str, PathConverter],
-    ) -> None:
-        sig = inspect.signature(impl)
-        for name, param in sig.parameters.items():
-            if name in pattern.groupindex:
-                coercion = _build_coercion(param)
-                try:
-                    existing = path_types[name]
-                except KeyError:
-                    path_types[name] = coercion
-                else:
-                    if existing != coercion:
-                        raise errors.PathTypeMismatchError(pattern, name)
+
+def _process_path_parameters(
+    impl: request_handling.RequestMethod,
+    pattern: re.Pattern[str],
+    path_types: dict[str, _PathConverter],
+) -> None:
+    sig = inspect.signature(impl)
+    for name, param in sig.parameters.items():
+        if name in pattern.groupindex:
+            coercion = _build_coercion(param)
+            try:
+                existing = path_types[name]
+            except KeyError:
+                path_types[name] = coercion
+            else:
+                if existing != coercion:
+                    raise errors.PathTypeMismatchError(pattern, name)
 
 
-def _build_coercion(param: inspect.Parameter) -> PathConverter:
+def _build_coercion(param: inspect.Parameter) -> _PathConverter:
     try:
         coercion = _converters[param.annotation]
     except KeyError:
@@ -161,6 +161,6 @@ def _build_coercion(param: inspect.Parameter) -> PathConverter:
                 *getattr(param.annotation, '__metadata__', ()),
             )
             return typing.cast(
-                PathConverter, typing.Annotated[origin, *metadata]
+                _PathConverter, typing.Annotated[origin, *metadata]
             )
         return coercion
