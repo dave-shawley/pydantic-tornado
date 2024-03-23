@@ -10,7 +10,9 @@ import yarl
 
 from pydantictornado import errors
 
+AnyCallable: typing.TypeAlias = typing.Callable[..., object | None]
 AnyType = type
+
 T = typing.TypeVar('T')
 DataInitializer = typing.Callable[
     [collections.abc.MutableMapping[AnyType, T]], None
@@ -128,7 +130,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
 
     def _probe(self, item: AnyType) -> int | None:
         index = 0
-        item = _remove_annotations(item)
+        item = strip_annotation(item)
         for base_cls, _ in self._data:
             try:
                 is_subclass = issubclass(item, base_cls)
@@ -147,7 +149,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         return None
 
     def __getitem__(self, item: AnyType) -> T:
-        item = _remove_annotations(item)
+        item = strip_annotation(item)
         try:
             coercion = self._cache[item]
         except KeyError:
@@ -162,7 +164,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
             return coercion
 
     def __setitem__(self, key: AnyType, value: T) -> None:
-        key = _remove_annotations(key)
+        key = strip_annotation(key)
         if not isinstance(key, type):
             raise errors.TypeRequiredError(key)
         self._cache.clear()
@@ -173,7 +175,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         self._cache[key] = value
 
     def __delitem__(self, key: AnyType) -> None:
-        key = _remove_annotations(key)
+        key = strip_annotation(key)
         self._cache.clear()
         for idx, (base_cls, _) in enumerate(self._data):
             if base_cls is key:
@@ -213,6 +215,32 @@ def json_serialize_hook(
     raise errors.NotSerializableError(obj)
 
 
+def strip_annotation(t: AnyType) -> AnyType:
+    """Remove annotations from `t`"""
+    return unwrap_annotation(t)[0]
+
+
+@typing.overload
+def unwrap_annotation(v: type) -> tuple[type, tuple[object, ...]]:
+    ...
+
+
+@typing.overload
+def unwrap_annotation(v: AnyCallable) -> tuple[AnyCallable, tuple[()]]:
+    ...
+
+
+def unwrap_annotation(
+    v: type | AnyCallable
+) -> tuple[type | AnyCallable, tuple[object, ...]]:
+    """Separate the origin value and metadata if `v` is annotated"""
+    if typing.get_origin(v) == typing.Annotated:
+        # NB ... typing.get_origin() returns None when given a
+        # non-type value, so we WILL NOT GET HERE for AnyCallable
+        return v.__origin__, v.__metadata__  # type: ignore[union-attr]
+    return v, ()
+
+
 def _format_isoduration(seconds: float) -> str:
     if seconds == 0.0:  # noqa: PLR2004 -- magic value okay here
         return 'PT0S'
@@ -232,10 +260,3 @@ def _format_isoduration(seconds: float) -> str:
     parts.append('P')
 
     return ''.join(reversed(parts))
-
-
-def _remove_annotations(t: AnyType) -> AnyType:
-    if typing.get_origin(t) == typing.Annotated:
-        cls, *_ = typing.get_args(t)
-        return typing.cast(AnyType, cls)
-    return t
