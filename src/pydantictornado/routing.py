@@ -6,6 +6,7 @@ import functools
 import inspect
 import ipaddress
 import re
+import types
 import typing
 import uuid
 
@@ -164,6 +165,10 @@ def _initialize_converters(
         ipaddress.IPv6Address: typing.Annotated[
             ipaddress.IPv6Address,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'ipv6'}),
+        ],
+        types.NoneType: typing.Annotated[
+            lambda _: None,
+            ParameterAnnotation(schema_={'type': 'null'}),
         ],
     }
     m.update(mapping)  # type: ignore[arg-type]

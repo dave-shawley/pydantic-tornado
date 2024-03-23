@@ -487,3 +487,40 @@ class DescribePathTests(unittest.TestCase):
         self.assertEqual(
             'More information here', description.parameters[0].description
         )
+
+    def test_union_parameters(self) -> None:
+        IdType: typing.TypeAlias = int | uuid.UUID
+
+        async def op(item_id: IdType) -> IdType:
+            return item_id
+
+        description = openapi._describe_path(  # private use ok
+            routing.Route(r'/items/(?P<item_id>\d+)', get=op),
+            openapi.OpenAPIPath(
+                path='/items/{item_id}', patterns={'item_id': r'\d+'}
+            ),
+        )
+        self.assertEqual(
+            {'oneOf': [{'type': 'int'}, {'type': 'string', 'format': 'uuid'}]},
+            description.parameters[0].schema_,
+        )
+
+        async def another_op(item_id: IdType | None) -> IdType | None:
+            return item_id
+
+        description = openapi._describe_path(  # private use ok
+            routing.Route(r'/items/(?P<item_id>\d+)', get=another_op),
+            openapi.OpenAPIPath(
+                path='/items/{item_id}', patterns={'item_id': r'\d+'}
+            ),
+        )
+        self.assertEqual(
+            {
+                'oneOf': [
+                    {'type': 'int'},
+                    {'type': 'string', 'format': 'uuid'},
+                    {'type': 'null'},
+                ]
+            },
+            description.parameters[0].schema_,
+        )

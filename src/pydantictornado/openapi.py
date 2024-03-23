@@ -254,6 +254,8 @@ def _describe_path(
                     if isinstance(item, SchemaExtra):
                         param.schema_.update(item.extra)
                     elif isinstance(item, routing.ParameterAnnotation):
+                        if 'oneOf' in item.schema_ or 'allOf' in item.schema_:
+                            param.schema_.pop('type', None)
                         param.schema_.update(item.schema_)
                         param.description = (
                             param.description or item.description
