@@ -46,6 +46,27 @@ class ParameterAnnotation(pydantic.BaseModel):
     explode: bool | None = None
 
 
+class _UUID(uuid.UUID):
+    """Wrapper class to work around defect in uuid.UUID
+
+    This works around a defect in annotation process of
+    immutable values that will be fixed in 3.12.3.
+
+    """
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        if len(args) == 1 and isinstance(args[0], uuid.UUID):
+            super().__init__(int=args[0].int)
+        else:
+            super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+
+    def __setattr__(self, key: str, value: object) -> None:
+        # See https://github.com/python/cpython/issues/115165
+        if key == '__orig_class__':
+            return
+        super().__setattr__(key, value)
+
+
 def _initialize_converters(
     m: collections.abc.MutableMapping[type, _PathConverter]
 ) -> None:
@@ -64,7 +85,10 @@ def _initialize_converters(
         str: typing.Annotated[
             lambda s: s, ParameterAnnotation(schema_={'type': 'string'})
         ],
-        uuid.UUID: uuid.UUID,
+        uuid.UUID: typing.Annotated[
+            _UUID,
+            ParameterAnnotation(schema_={'type': 'string', 'format': 'uuid'}),
+        ],
         datetime.date: typing.Annotated[
             util.parse_date,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'date'}),

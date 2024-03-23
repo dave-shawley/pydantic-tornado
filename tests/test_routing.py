@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import ipaddress
 import re
+import typing
 import unittest.mock
 import uuid
 
@@ -95,7 +96,7 @@ class RouteTests(unittest.TestCase):
             r = routing.Route(r'/(?P<_obj>.*)', get=impl)
             result = r.target_kwargs['path_types']['_obj'](str_value)
             self.assertTrue(
-                issubclass(cls, type(result)),
+                issubclass(type(result), cls),
                 f'parsing {str_value!r} produced incompatible'
                 f' type {type(result)}',
             )
@@ -209,3 +210,27 @@ class RouteTests(unittest.TestCase):
 
         # should not raise
         routing.Route(r'/(?P<_id>.*)', get=int_impl, delete=another_int_impl)
+
+
+class UUIDWrapperTests(unittest.TestCase):
+    def test_that_construction_alternatives_are_supported(self) -> None:
+        value = uuid.uuid4()
+        for alternative in ('hex', 'bytes', 'bytes_le', 'fields', 'int'):
+            self.assertEqual(
+                value,
+                routing._UUID(**{alternative: getattr(value, alternative)}),
+            )
+
+    def test_that_uuid_copying_is_supported(self) -> None:
+        value = uuid.uuid4()
+        self.assertEqual(value, routing._UUID(value))
+
+    def test_that_uuid_can_be_annotated(self) -> None:
+        uuid_type = typing.Annotated[routing._UUID, 'whatever']
+        self.assertEqual(uuid.UUID(int=0), uuid_type(int=0))
+
+    def test_that_uuid_is_still_immutable(self) -> None:
+        uuid_type = typing.Annotated[routing._UUID, 'whatever']
+        uuid = uuid_type(int=0)
+        with self.assertRaises(TypeError):
+            uuid.version = 4  # type: ignore[misc]

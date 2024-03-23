@@ -272,7 +272,7 @@ class OpenAPIAnnotationTests(unittest.TestCase):
 class OpenAPIRegexTests(unittest.TestCase):
     @staticmethod
     def translate_path_pattern(pattern: str) -> openapi.OpenAPIPath:
-        return openapi._translate_path_pattern(re.compile(pattern))  # noqa: SLF001
+        return openapi._translate_path_pattern(re.compile(pattern))
 
     def test_simple_paths(self) -> None:
         result = self.translate_path_pattern(r'/items/(?P<item_id>.*)')
@@ -412,7 +412,11 @@ class DescribeApiTests(unittest.TestCase):
                 'in': 'path',
                 'required': True,
                 'deprecated': False,
-                'schema': {'type': 'string', 'pattern': '.*'},
+                'schema': {
+                    'type': 'string',
+                    'pattern': '.*',
+                    'format': 'uuid',
+                },
             },
             description['paths']['/items/{_id}']['parameters'][0],
         )
@@ -474,7 +478,7 @@ class DescribePathTests(unittest.TestCase):
         async def op(item_id: IdType) -> IdType:
             return item_id
 
-        description = openapi._describe_path(  # noqa: SLF001 private use ok
+        description = openapi._describe_path(
             routing.Route(r'/items/(?P<item_id>\d+)', get=op),
             openapi.OpenAPIPath(
                 path='/items/{item_id}', patterns={'item_id': r'\d+'}

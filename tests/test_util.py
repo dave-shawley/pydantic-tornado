@@ -75,16 +75,14 @@ class ClassMappingTests(unittest.TestCase):
 
     def test_that_clear_resets_cache(self) -> None:
         mapping = util.ClassMapping[str]()
-        mapping_cache = mapping._cache  # noqa: SLF001 -- private access
-
         mapping[int] = 'int'
         mapping[bool] = 'bool'
         mapping[float] = 'float'
         mapping.populate_cache()
-        self.assertEqual(len(mapping_cache), 3)
+        self.assertEqual(len(mapping._cache), 3)
 
         mapping.clear()
-        self.assertEqual(len(mapping_cache), 0)
+        self.assertEqual(len(mapping._cache), 0)
 
     def test_rebuild(self) -> None:
         def initializer(m: collections.abc.MutableMapping[type, str]) -> None:
@@ -98,22 +96,20 @@ class ClassMappingTests(unittest.TestCase):
         self.assertEqual(len(mapping), 0)
 
         mapping = util.ClassMapping[str](initialize_data=initializer)
-        mapping_cache = mapping._cache  # noqa: SLF001 -- private access
-
         self.assertEqual(len(mapping), 3)
-        self.assertEqual(len(mapping_cache), 3)
+        self.assertEqual(len(mapping._cache), 3)
 
         mapping.clear()
         self.assertEqual(len(mapping), 0)
-        self.assertEqual(len(mapping_cache), 0)
+        self.assertEqual(len(mapping._cache), 0)
 
         mapping[float] = 'float'
         self.assertEqual(len(mapping), 1)
-        self.assertEqual(len(mapping_cache), 1)
+        self.assertEqual(len(mapping._cache), 1)
 
         mapping.rebuild()
         self.assertEqual(len(mapping), 3)
-        self.assertEqual(len(mapping_cache), 3)
+        self.assertEqual(len(mapping._cache), 3)
 
 
 class JSONSerializationTests(unittest.TestCase):
