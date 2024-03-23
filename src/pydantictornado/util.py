@@ -13,6 +13,7 @@ from pydantictornado import errors
 
 AnyCallable: typing.TypeAlias = typing.Callable[..., object | None]
 AnyType = type
+DefaultType = typing.TypeVar('DefaultType')
 
 T = typing.TypeVar('T')
 DataInitializer = typing.Callable[
@@ -135,7 +136,22 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         for key, _ in self._data:
             self.__getitem__(key)
 
-    def _probe(self, item: AnyType) -> int | None:
+    @typing.overload
+    def _probe(self, item: AnyType) -> int:
+        ...
+
+    @typing.overload
+    def _probe(
+        self, item: AnyType, *, default: DefaultType
+    ) -> int | DefaultType:
+        ...
+
+    def _probe(
+        self,
+        item: AnyType,
+        *,
+        default: DefaultType | Unspecified = UNSPECIFIED,
+    ) -> int | DefaultType:
         index = 0
         item = strip_annotation(item)
         for base_cls, _ in self._data:
@@ -153,18 +169,19 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
                 if is_subclass:
                     return index
             index += 1
-        return None
+        if not isinstance(default, Unspecified):
+            return default
+        raise KeyError(item)
 
     def __getitem__(self, item: AnyType) -> T:
         item = strip_annotation(item)
         try:
             coercion = self._cache[item]
         except KeyError:
-            if (index := self._probe(item)) is not None:
-                base_cls, coercion = self._data[index]
-                self._cache[item] = coercion
-                return coercion
-            raise
+            index = self._probe(item)
+            base_cls, coercion = self._data[index]
+            self._cache[item] = coercion
+            return coercion
         except TypeError:
             raise errors.TypeRequiredError(item) from None
         else:
@@ -175,8 +192,9 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         if not isinstance(key, type):
             raise errors.TypeRequiredError(key)
         self._cache.clear()
-        if (index := self._probe(key)) is not None:
-            self._data.insert(index, (key, value))
+        not_found = object()
+        if (index := self._probe(key, default=not_found)) is not not_found:
+            self._data.insert(index, (key, value))  # type: ignore[arg-type]
         else:
             self._data.append((key, value))
         self._cache[key] = value

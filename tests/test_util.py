@@ -111,6 +111,12 @@ class ClassMappingTests(unittest.TestCase):
         self.assertEqual(len(mapping), 3)
         self.assertEqual(len(mapping._cache), 3)
 
+    def test_that_none_is_handled(self) -> None:
+        none_type = type(None)
+        mapping = util.ClassMapping[str]()
+        mapping[none_type] = 'null'
+        self.assertEqual('null', mapping[none_type])
+
 
 class JSONSerializationTests(unittest.TestCase):
     def test_with_unhandled_type(self) -> None:
