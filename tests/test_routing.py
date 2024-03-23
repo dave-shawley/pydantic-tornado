@@ -5,7 +5,7 @@ import re
 import unittest.mock
 import uuid
 
-from pydantictornado import errors, routing
+from pydantictornado import errors, routing, util
 from tornado import web
 
 
@@ -133,10 +133,10 @@ class RouteTests(unittest.TestCase):
         false_strings: set[str] = {'no', 'false'}
         with (
             unittest.mock.patch.object(
-                routing, 'BOOLEAN_TRUE_STRINGS', new=true_strings
+                util, 'BOOLEAN_TRUE_STRINGS', new=true_strings
             ),
             unittest.mock.patch.object(
-                routing, 'BOOLEAN_FALSE_STRINGS', new=false_strings
+                util, 'BOOLEAN_FALSE_STRINGS', new=false_strings
             ),
         ):
             for t_value in true_strings:

@@ -1,5 +1,4 @@
 import collections.abc
-import contextlib
 import datetime
 import enum
 import functools
@@ -14,12 +13,6 @@ import tornado.routing
 import tornado.web
 
 from pydantictornado import errors, request_handling, util
-
-BOOLEAN_TRUE_STRINGS: set[str] = set()
-"""String values that are parsed as `True` for boolean parameters"""
-
-BOOLEAN_FALSE_STRINGS: set[str] = set()
-"""String values that are parsed as `False` for boolean parameters"""
 
 _HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
 
@@ -58,7 +51,7 @@ def _initialize_converters(
 ) -> None:
     mapping = {
         bool: typing.Annotated[
-            lambda s: _convert_bool(s),
+            util.convert_bool,
             ParameterAnnotation(schema_={'type': 'boolean'}),
         ],
         float: typing.Annotated[
@@ -73,11 +66,11 @@ def _initialize_converters(
         ],
         uuid.UUID: uuid.UUID,
         datetime.date: typing.Annotated[
-            lambda s: _parse_datetime(s).date(),
+            util.parse_date,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'date'}),
         ],
         datetime.datetime: typing.Annotated[
-            lambda s: _parse_datetime(s),
+            util.parse_datetime,
             ParameterAnnotation(
                 schema_={'type': 'string', 'format': 'date-time'}
             ),
@@ -171,30 +164,3 @@ def _build_coercion(param: inspect.Parameter) -> PathConverter:
                 PathConverter, typing.Annotated[origin, *metadata]
             )
         return coercion
-
-
-def _parse_datetime(value: str) -> datetime.datetime:
-    formats = ['%Y', '%Y-%m', '%Y%m']
-    with contextlib.suppress(ValueError):
-        then = datetime.datetime.fromisoformat(value)
-        if not then.tzinfo:
-            then = then.replace(tzinfo=datetime.UTC)
-        return then
-    for fmt in formats:
-        with contextlib.suppress(ValueError):
-            return datetime.datetime.strptime(value, fmt).replace(
-                tzinfo=datetime.UTC
-            )
-    raise errors.ValueParseError(value, datetime.datetime)
-
-
-def _convert_bool(value: str) -> bool:
-    if value in BOOLEAN_TRUE_STRINGS:
-        return True
-    if value in BOOLEAN_FALSE_STRINGS:
-        return False
-    try:
-        int_value = int(value, base=10)
-    except (TypeError, ValueError):
-        raise errors.ValueParseError(value, int) from None
-    return bool(int_value)

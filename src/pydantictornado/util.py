@@ -1,4 +1,5 @@
 import collections.abc
+import contextlib
 import datetime
 import ipaddress
 import logging
@@ -25,6 +26,12 @@ class Unspecified:
     def __bool__(self) -> bool:
         return False
 
+
+BOOLEAN_TRUE_STRINGS: set[str] = set()
+"""String values that are parsed as `True` for boolean parameters"""
+
+BOOLEAN_FALSE_STRINGS: set[str] = set()
+"""String values that are parsed as `False` for boolean parameters"""
 
 UNSPECIFIED = Unspecified()
 
@@ -213,6 +220,57 @@ def json_serialize_hook(
         return obj.model_dump(by_alias=True)
 
     raise errors.NotSerializableError(obj)
+
+
+def convert_bool(value: str) -> bool:
+    """Convert `value` into a Boolean based on configuration
+
+    This function uses the [BOOLEAN_TRUE_STRINGS][] and
+    [BOOLEAN_FALSE_STRINGS][] constants to convert `value`
+    to a `bool`. If there is not a direct string match, it
+    tries to convert `value` to an int and then casts that
+    to a Boolean value.
+
+    Raises [pydantictornado.errors.ValueParseError][] if it
+    cannot convert `value` to a Boolean value.
+    """
+    if value in BOOLEAN_TRUE_STRINGS:
+        return True
+    if value in BOOLEAN_FALSE_STRINGS:
+        return False
+    try:
+        int_value = int(value, base=10)
+    except (TypeError, ValueError):
+        raise errors.ValueParseError(value, int) from None
+    return bool(int_value)
+
+
+def parse_datetime(value: str) -> datetime.datetime:
+    """Parse `value` into a datetime according to ISO-8601
+
+    Uses [datetime.datetime.fromisoformat][] to parse `value`.
+    If that fails, then the shortened date forms are used.
+
+    Raises [pydantictornado.errors.ValueParseError][] if it
+    cannot convert `value` to a Boolean value.
+    """
+    formats = ['%Y', '%Y-%m', '%Y%m']
+    with contextlib.suppress(ValueError):
+        then = datetime.datetime.fromisoformat(value)
+        if not then.tzinfo:
+            then = then.replace(tzinfo=datetime.UTC)
+        return then
+    for fmt in formats:
+        with contextlib.suppress(ValueError):
+            return datetime.datetime.strptime(value, fmt).replace(
+                tzinfo=datetime.UTC
+            )
+    raise errors.ValueParseError(value, datetime.datetime)
+
+
+def parse_date(value: str) -> datetime.date:
+    """Parses `value` as a datetime.datetime and discards the time"""
+    return parse_datetime(value).date()
 
 
 def strip_annotation(t: AnyType) -> AnyType:
