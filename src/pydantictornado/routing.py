@@ -1,4 +1,5 @@
 import collections.abc
+import contextlib
 import datetime
 import enum
 import functools
@@ -14,9 +15,66 @@ import tornado.web
 
 from pydantictornado import errors, request_handling, util
 
-_HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
+HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
+"""Supported HTTP methods"""
 
-_PathConverter = typing.Callable[[str], typing.Any]
+
+class _PathConverter(typing.Protocol):
+    """Path parameter that has been annotated with metadata
+
+    This is used to simplify type checking since typing.Annotated
+    is not *really* a type though it guarantees that two properties
+    are present.
+    """
+
+    def __call__(self, value: str) -> object:
+        ...
+
+    @property
+    def __origin__(self) -> typing.Self:
+        ...
+
+    @property
+    def __metadata__(self) -> tuple[object, ...]:
+        ...
+
+
+class _UnionPathConverter:
+    """A PathConverter that implements first-match for union types"""
+
+    def __init__(self, converters: typing.Iterable[_PathConverter]) -> None:
+        self.converters = list(converters)
+
+    def __call__(self, value: str, /) -> object:
+        for converter in self.converters:
+            # uuid.UUID(1.23) raises AttributeError
+            # uuid.UUID(None) raises TypeError
+            # float('foo')    raises ValueError
+            with contextlib.suppress(AttributeError, TypeError, ValueError):
+                return converter(value)
+        raise errors.ValueParseError(value, self.__class__)
+
+
+def _build_coercion(param: inspect.Parameter) -> _PathConverter:
+    coercion: _UnionPathConverter | _PathConverter
+    param_type, param_metadata = util.unwrap_annotation(param.annotation)
+    options = typing.get_args(param_type)
+    if options:
+        coercion = _UnionPathConverter(
+            _lookup_coercion(cls) for cls in options
+        )
+        coercion = _annotate_union_parameter(coercion)
+    else:
+        coercion = _lookup_coercion(param.annotation)
+
+    if param_metadata:  # combine annotations from signature and coercion
+        origin, coercion_metadata = util.unwrap_annotation(coercion)
+        coercion = typing.cast(
+            _PathConverter,
+            typing.Annotated[origin, *param_metadata, *coercion_metadata],
+        )
+
+    return coercion
 
 
 class ParameterStyle(enum.StrEnum):
@@ -128,7 +186,7 @@ class Route(tornado.routing.URLSpec):
 
         target_kwargs = {}
         for name, value in kwargs.items():
-            if name.upper() in _HTTP_METHOD_NAMES:
+            if name.upper() in HTTP_METHOD_NAMES:
                 if not inspect.iscoroutinefunction(value):
                     raise errors.CoroutineRequiredError(value)
                 self._implementations[name.upper()] = value
@@ -172,19 +230,34 @@ def _process_path_parameters(
                     raise errors.PathTypeMismatchError(pattern, name)
 
 
-def _build_coercion(param: inspect.Parameter) -> _PathConverter:
+def _lookup_coercion(cls: type) -> _PathConverter:
+    cls, additional_metadata = util.unwrap_annotation(cls)
     try:
-        coercion = _converters[param.annotation]
+        coercion = _converters[cls]
     except KeyError:
-        raise errors.UnroutableParameterTypeError(param.annotation) from None
+        raise errors.UnroutableParameterTypeError(cls) from None
     else:
-        if typing.get_origin(coercion) == typing.Annotated:
-            origin = coercion.__origin__  # type: ignore[attr-defined]
-            metadata = (
-                *coercion.__metadata__,  # type: ignore[attr-defined]
-                *getattr(param.annotation, '__metadata__', ()),
-            )
-            return typing.cast(
-                _PathConverter, typing.Annotated[origin, *metadata]
-            )
-        return coercion
+        return typing.cast(
+            _PathConverter,
+            typing.Annotated[
+                coercion.__origin__,
+                *coercion.__metadata__,
+                *additional_metadata,
+            ],
+        )
+
+
+def _annotate_union_parameter(coercion: _UnionPathConverter) -> _PathConverter:
+    one_of: list[dict[str, object]] = []
+    for alternative in coercion.converters:
+        one_of.extend(
+            meta.schema_
+            for meta in getattr(alternative, '__metadata__', ())
+            if isinstance(meta, ParameterAnnotation)
+        )
+    return typing.cast(
+        _PathConverter,
+        typing.Annotated[
+            coercion, ParameterAnnotation(schema_={'oneOf': one_of})
+        ],
+    )

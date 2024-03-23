@@ -1,4 +1,5 @@
 import asyncio
+import collections.abc
 import datetime
 import ipaddress
 import re
@@ -195,6 +196,22 @@ class RouteTests(unittest.TestCase):
             ):
                 coercion_func(str_value)
 
+    def test_parsing_union_types(self) -> None:
+        async def impl(id_: int | uuid.UUID) -> str:
+            return str(id_)
+
+        route = routing.Route(r'/(?P<id_>.*)', get=impl)
+        coercion_func = route.target_kwargs['path_types']['id_']
+        self.assertIsNotNone(coercion_func)
+
+        u = uuid.uuid4()
+        expectations = {'12345': 12345, str(u): u}
+        for str_value, expected in expectations.items():
+            self.assertEqual(expected, coercion_func(str_value))
+
+        with self.assertRaises(errors.ValueParseError):
+            coercion_func(1.23)
+
     def test_incongruent_parameter_types(self) -> None:
         async def int_impl(*, _id: int) -> None:
             pass
@@ -234,3 +251,65 @@ class UUIDWrapperTests(unittest.TestCase):
         uuid = uuid_type(int=0)
         with self.assertRaises(TypeError):
             uuid.version = 4  # type: ignore[misc]
+
+
+class ParsedMetadataTests(unittest.TestCase):
+    def test_simple_type_schemas(self) -> None:
+        expectations = {
+            bool: {'type': 'boolean'},
+            float: {'type': 'float'},
+            int: {'type': 'int'},
+            str: {'type': 'string'},
+            datetime.date: {'type': 'string', 'format': 'date'},
+            datetime.datetime: {'type': 'string', 'format': 'date-time'},
+            ipaddress.IPv4Address: {'type': 'string', 'format': 'ipv4'},
+            ipaddress.IPv6Address: {'type': 'string', 'format': 'ipv6'},
+        }
+
+        for cls, expected_schema in expectations.items():
+
+            async def impl(*, obj: cls) -> int:  # type: ignore[valid-type]
+                return hash(obj)
+
+            self.assert_schema_matches(
+                routing.Route(r'/(?P<obj>.*)', get=impl),
+                'obj',
+                expected_schema,
+            )
+
+    def test_union_type_schema(self) -> None:
+        async def impl(*, obj: int | uuid.UUID) -> int:
+            return hash(obj)
+
+        self.assert_schema_matches(
+            routing.Route(r'/(?P<obj>.*)', get=impl),
+            'obj',
+            {
+                'oneOf': [
+                    {'type': 'int'},
+                    {'type': 'string', 'format': 'uuid'},
+                ]
+            },
+        )
+
+    def assert_schema_matches(
+        self,
+        route: routing.Route,
+        param_name: str,
+        expected_schema: collections.abc.Mapping[str, object],
+    ) -> None:
+        path_info = route.target_kwargs['path_types'][param_name]
+        self.assertEqual(
+            typing.Annotated,
+            typing.get_origin(path_info),
+            f'{path_info} is not annotated',
+        )
+
+        schemas = [
+            p.schema_
+            for p in path_info.__metadata__
+            if isinstance(p, routing.ParameterAnnotation)
+        ]
+        if not schemas:
+            self.fail(f'Missing parameter annotation for {param_name}')
+        self.assertIn(expected_schema, schemas)
