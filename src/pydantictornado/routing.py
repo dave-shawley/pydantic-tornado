@@ -192,7 +192,7 @@ class Route(tornado.routing.URLSpec):
         target_kwargs = {}
         for name, value in kwargs.items():
             if name.upper() in HTTP_METHOD_NAMES:
-                if not inspect.iscoroutinefunction(value):
+                if not util.is_coroutine_function(value):
                     raise errors.CoroutineRequiredError(value)
                 self._implementations[name.upper()] = value
             target_kwargs[name] = value

@@ -1,6 +1,7 @@
 import collections.abc
 import contextlib
 import datetime
+import inspect
 import ipaddress
 import logging
 import typing
@@ -293,25 +294,22 @@ def strip_annotation(t: T) -> T:
     return unwrap_annotation(t)[0]
 
 
-@typing.overload
-def unwrap_annotation(v: type) -> tuple[type, tuple[object, ...]]:
-    ...
-
-
-@typing.overload
-def unwrap_annotation(v: AnyCallable) -> tuple[AnyCallable, tuple[()]]:
-    ...
-
-
-def unwrap_annotation(
-    v: type | AnyCallable
-) -> tuple[type | AnyCallable, tuple[object, ...]]:
+def unwrap_annotation(v: T) -> tuple[T, tuple[object, ...]]:
     """Separate the origin value and metadata if `v` is annotated"""
     if typing.get_origin(v) == typing.Annotated:
         # NB ... typing.get_origin() returns None when given a
-        # non-type value, so we WILL NOT GET HERE for AnyCallable
-        return v.__origin__, v.__metadata__  # type: ignore[union-attr]
+        # non-type value, so we ONLY get here for annotated type
+        # values which always have __origin__ and __metadata__
+        # attributes
+        return v.__origin__, v.__metadata__  # type: ignore[attr-defined]
     return v, ()
+
+
+def is_coroutine_function(
+    obj: object | type
+) -> typing.TypeGuard[typing.Callable[..., typing.Awaitable[typing.Any]]]:
+    """inspect.iscoroutinefunction that unwraps annotations first"""
+    return inspect.iscoroutinefunction(strip_annotation(obj))
 
 
 def _format_isoduration(seconds: float) -> str:

@@ -84,7 +84,7 @@ class RequestHandler(web.RequestHandler):
             key = http_method.lower()
             func = kwargs.pop(key, util.UNSPECIFIED)
             if func is not util.UNSPECIFIED:
-                if not inspect.iscoroutinefunction(func):
+                if not util.is_coroutine_function(func):
                     self.logger.critical(
                         'implementation method for %r is not a co-routine', key
                     )
@@ -103,7 +103,7 @@ class RequestHandler(web.RequestHandler):
         if self.request.method is None:
             raise web.HTTPError(500)  # pragma: nocover -- should not happen!
 
-        func = self.implementations[self.request.method]
+        func = util.strip_annotation(self.implementations[self.request.method])
         sig = inspect.signature(func, eval_str=True)
 
         try:
