@@ -12,12 +12,11 @@ import yarl
 from pydantictornado import errors
 
 AnyCallable: typing.TypeAlias = typing.Callable[..., object | None]
-AnyType = type
 DefaultType = typing.TypeVar('DefaultType')
 
 T = typing.TypeVar('T')
 DataInitializer = typing.Callable[
-    [collections.abc.MutableMapping[AnyType, T]], None
+    [collections.abc.MutableMapping[type, T]], None
 ]
 
 
@@ -77,7 +76,7 @@ class FieldOmittingMixin(pydantic.BaseModel):
         return result
 
 
-class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
+class ClassMapping(collections.abc.MutableMapping[type, T]):
     """Map types to another value
 
     This class maps classes to another value respecting
@@ -109,15 +108,15 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
 
     def __init__(
         self,
-        data: collections.abc.Mapping[AnyType, T] | object = UNSPECIFIED,
+        data: collections.abc.Mapping[type, T] | object = UNSPECIFIED,
         *,
         initialize_data: DataInitializer[T] | None = None,
     ) -> None:
-        self._data: list[tuple[AnyType, T]] = []
-        self._cache: dict[AnyType, T] = {}
+        self._data: list[tuple[type, T]] = []
+        self._cache: dict[type, T] = {}
         self._initialize_data = initialize_data
         if data is not UNSPECIFIED:
-            data = typing.cast(collections.abc.Mapping[AnyType, T], data)
+            data = typing.cast(collections.abc.Mapping[type, T], data)
             for key, value in data.items():
                 self[key] = value
         if self._initialize_data is not None:
@@ -137,18 +136,16 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
             self.__getitem__(key)
 
     @typing.overload
-    def _probe(self, item: AnyType) -> int:
+    def _probe(self, item: type) -> int:
         ...
 
     @typing.overload
-    def _probe(
-        self, item: AnyType, *, default: DefaultType
-    ) -> int | DefaultType:
+    def _probe(self, item: type, *, default: DefaultType) -> int | DefaultType:
         ...
 
     def _probe(
         self,
-        item: AnyType,
+        item: type,
         *,
         default: DefaultType | Unspecified = UNSPECIFIED,
     ) -> int | DefaultType:
@@ -173,7 +170,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
             return default
         raise KeyError(item)
 
-    def __getitem__(self, item: AnyType) -> T:
+    def __getitem__(self, item: type) -> T:
         item = strip_annotation(item)
         try:
             coercion = self._cache[item]
@@ -187,7 +184,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
         else:
             return coercion
 
-    def __setitem__(self, key: AnyType, value: T) -> None:
+    def __setitem__(self, key: type, value: T) -> None:
         key = strip_annotation(key)
         if not isinstance(key, type):
             raise errors.TypeRequiredError(key)
@@ -199,7 +196,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
             self._data.append((key, value))
         self._cache[key] = value
 
-    def __delitem__(self, key: AnyType) -> None:
+    def __delitem__(self, key: type) -> None:
         key = strip_annotation(key)
         self._cache.clear()
         for idx, (base_cls, _) in enumerate(self._data):
@@ -212,7 +209,7 @@ class ClassMapping(collections.abc.MutableMapping[AnyType, T]):
     def __len__(self) -> int:
         return len(self._data)
 
-    def __iter__(self) -> typing.Iterator[AnyType]:
+    def __iter__(self) -> typing.Iterator[type]:
         return iter(t[0] for t in self._data)
 
 
@@ -291,7 +288,7 @@ def parse_date(value: str) -> datetime.date:
     return parse_datetime(value).date()
 
 
-def strip_annotation(t: AnyType) -> AnyType:
+def strip_annotation(t: T) -> T:
     """Remove annotations from `t`"""
     return unwrap_annotation(t)[0]
 
