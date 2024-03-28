@@ -1,5 +1,4 @@
 import collections.abc
-import contextlib
 import datetime
 import functools
 import ipaddress
@@ -69,7 +68,7 @@ class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
 
 
 def _initialize_type_map(
-    m: collections.abc.MutableMapping[type, dict[str, typing.Any]]
+    m: collections.abc.MutableMapping[type, dict[str, typing.Any]],
 ) -> None:
     m.update(
         {
@@ -236,34 +235,35 @@ def _describe_path(
 ) -> PathDescription:
     desc = PathDescription()
     for name, pattern in path_info.patterns.items():
-        param = Parameter.model_validate(
-            {
-                'name': name,
-                'in': 'path',
-                'required': True,
-                'schema': {'type': 'string'},
-            }
-        )
-        # convince mypy that schema is not None
-        if param.schema_ is None:
-            continue  # pragma: nocover
-        with contextlib.suppress(KeyError):
-            if route.kwargs:
-                param_info = route.kwargs['path_types'][name]
-                for item in getattr(param_info, '__metadata__', []):
-                    if isinstance(item, SchemaExtra):
-                        param.schema_.update(item.extra)
-                    elif isinstance(item, routing.ParameterAnnotation):
-                        if 'oneOf' in item.schema_ or 'allOf' in item.schema_:
-                            param.schema_.pop('type', None)
-                        param.schema_.update(item.schema_)
-                        param.description = (
-                            param.description or item.description
-                        )
+        defaults = {
+            'name': name,
+            'in': 'path',
+            'required': True,
+            'schema': {'type': 'string'},
+        }
+        if route.kwargs and (
+            path_info := route.kwargs.get('path_types', {}).get(name)
+        ):
+            param = _describe_parameter(path_info, **defaults)
+        else:
+            param = Parameter.model_validate(defaults)
         if param.schema_.get('type', '') == 'string':
-            param.schema_['pattern'] = pattern
+            param.schema_.setdefault('pattern', pattern)
         desc.parameters.append(param)
     return desc
+
+
+def _describe_parameter(param_info: object, **defaults: object) -> Parameter:
+    param = Parameter.model_validate(defaults)
+    for item in getattr(param_info, '__metadata__', []):
+        if isinstance(item, SchemaExtra):
+            param.schema_.update(item.extra)
+        elif isinstance(item, routing.ParameterAnnotation):
+            if 'oneOf' in item.schema_ or 'allOf' in item.schema_:
+                param.schema_.pop('type', None)
+            param.schema_.update(item.schema_)
+            param.description = param.description or item.description
+    return param
 
 
 def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:

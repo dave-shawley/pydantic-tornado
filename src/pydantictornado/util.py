@@ -221,7 +221,7 @@ class HasIsoFormat(typing.Protocol):
 
 
 def json_serialize_hook(
-    obj: object
+    obj: object,
 ) -> bool | float | int | str | dict[str, object]:
     if isinstance(obj, HasIsoFormat):
         return obj.isoformat()
@@ -306,7 +306,7 @@ def unwrap_annotation(v: T) -> tuple[T, tuple[object, ...]]:
 
 
 def is_coroutine_function(
-    obj: object | type
+    obj: object | type,
 ) -> typing.TypeGuard[typing.Callable[..., typing.Awaitable[typing.Any]]]:
     """inspect.iscoroutinefunction that unwraps annotations first"""
     return inspect.iscoroutinefunction(strip_annotation(obj))

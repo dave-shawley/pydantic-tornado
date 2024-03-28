@@ -127,7 +127,7 @@ class _UUID(uuid.UUID):
 
 
 def _initialize_converters(
-    m: collections.abc.MutableMapping[type, _PathConverter]
+    m: collections.abc.MutableMapping[type, _PathConverter],
 ) -> None:
     mapping = {
         bool: typing.Annotated[
