@@ -11,6 +11,8 @@ from pydantictornado import request_handling, routing
 from tornado import http1connection, httputil, testing, web
 from tornado.web import Application
 
+import tests
+
 
 def create_request(**kwargs: object) -> httputil.HTTPServerRequest:
     kwargs.setdefault(
@@ -89,10 +91,12 @@ class RequestHandlerTests(unittest.IsolatedAsyncioTestCase):
                 get=unittest.mock.AsyncMock(),
                 request_kwargs={'method': http_method},
             )
-            method = getattr(handler, http_method.lower(), None)
-            self.assertIsNotNone(method)
+            method: request_handling.RequestMethod | None = getattr(
+                handler, http_method.lower(), None
+            )
+            method = tests.assert_is_not_none(method)
             with self.assertRaises(web.HTTPError) as context:
-                await method()  # type: ignore[misc] # mypy should know better
+                await method()
             self.assertEqual(
                 http.HTTPStatus.METHOD_NOT_ALLOWED,
                 context.exception.status_code,
