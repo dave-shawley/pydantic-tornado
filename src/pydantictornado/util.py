@@ -4,6 +4,7 @@ import datetime
 import inspect
 import ipaddress
 import logging
+import types
 import typing
 import uuid
 
@@ -35,6 +36,24 @@ BOOLEAN_FALSE_STRINGS: set[str] = set()
 """String values that are parsed as `False` for boolean parameters"""
 
 UNSPECIFIED = Unspecified()
+
+
+def apply_default(
+    value: T,
+    default: T | Unspecified | None | types.EllipsisType,
+) -> T:
+    """Use a default value when appropriate
+
+    Note that this function will return `value` if `default`
+    is `None`, `...`, or an `Unspecified` instance. This matters
+    when *both* `value` and `default` are one of the "defaulted"
+    values (eg, `None`, `...`, `UNSPECIFIED`).
+    """
+    if default in (UNSPECIFIED, None, ...) or isinstance(default, Unspecified):
+        return value
+    if value in (UNSPECIFIED, None, ...) or isinstance(value, Unspecified):
+        return typing.cast(T, default)
+    return value
 
 
 def get_logger_for(obj: object) -> logging.Logger:

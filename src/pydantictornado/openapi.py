@@ -262,7 +262,9 @@ def _describe_parameter(param_info: object, **defaults: object) -> Parameter:
             if 'oneOf' in item.schema_ or 'allOf' in item.schema_:
                 param.schema_.pop('type', None)
             param.schema_.update(item.schema_)
-            param.description = param.description or item.description
+            param.description = util.apply_default(
+                param.description, item.description
+            )
     return param
 
 

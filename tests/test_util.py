@@ -203,3 +203,50 @@ class JSONSerializationTests(unittest.TestCase):
             {'id': 1, 'name': 'Something Useful', 'slug': 'something-useful'},
             typing.cast(dict[object, object], serialized),
         )
+
+
+class UtilityFunctionTests(unittest.TestCase):
+    def test_apply_default_of_unspecified(self) -> None:
+        self.assertIsNone(util.apply_default(None, util.UNSPECIFIED))
+        self.assertIs(
+            util.UNSPECIFIED,
+            util.apply_default(util.UNSPECIFIED, util.UNSPECIFIED),
+        )
+        self.assertEqual(
+            unittest.mock.sentinel.value,
+            util.apply_default(
+                unittest.mock.sentinel.value, unittest.mock.sentinel.default
+            ),
+        )
+        self.assertEqual(
+            unittest.mock.sentinel.value,
+            util.apply_default(
+                unittest.mock.sentinel.value, util.Unspecified()
+            ),
+        )
+
+    def test_apply_default_of_none(self) -> None:
+        self.assertEqual(
+            unittest.mock.sentinel.value,
+            util.apply_default(unittest.mock.sentinel.value, None),
+        )
+
+    def test_apply_default_of_ellipsis(self) -> None:
+        self.assertEqual(
+            unittest.mock.sentinel.value,
+            util.apply_default(unittest.mock.sentinel.value, ...),
+        )
+
+    def test_apply_default_value_unspecified(self) -> None:
+        self.assertEqual(
+            unittest.mock.sentinel.default,
+            util.apply_default(
+                util.UNSPECIFIED, unittest.mock.sentinel.default
+            ),
+        )
+
+    def test_apply_default_value_none(self) -> None:
+        self.assertEqual(
+            unittest.mock.sentinel.default,
+            util.apply_default(None, unittest.mock.sentinel.default),
+        )
