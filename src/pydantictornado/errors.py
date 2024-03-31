@@ -68,9 +68,9 @@ class NoHttpMethodsDefinedError(ConfigurationError):
 class ValueParseError(PydanticTornadoError, ValueError):
     """Failed to parse a request parameter value according to its type"""
 
-    def __init__(self, value: object, cls: type) -> None:
-        super().__init__(f'failed to parse {value!r} as a {cls.__name__}')
-        self.expected_type = cls
+    def __init__(self, value: object, parser: object) -> None:
+        super().__init__(f'failed to parse {value!r} as {parser}')
+        self.expected_type = parser
         self.value = value
 
 

@@ -7,6 +7,7 @@ import logging
 import typing
 import uuid
 
+import pydantic
 import tornado.httputil
 import yarl
 from tornado import web
@@ -111,7 +112,10 @@ class RequestHandler(web.RequestHandler):
                 name: self.__path_coercions[name](value)
                 for name, value in path_kwargs.items()
             }
-        except ValueError:
+        except ValueError as error:
+            self.logger.error(
+                'failed to process path parameter for %s: %s', func, error
+            )
             raise web.HTTPError(400) from None
         self.__handle_injections(sig.parameters, kwargs)
 
@@ -132,6 +136,7 @@ class RequestHandler(web.RequestHandler):
         annotations: collections.abc.Mapping[str, inspect.Parameter],
         kwargs: dict[str, object],
     ) -> None:
+        logger = util.get_logger_for(self)
         mapping = util.ClassMapping[object](
             {
                 tornado.httputil.HTTPServerRequest: self.request,
@@ -139,10 +144,23 @@ class RequestHandler(web.RequestHandler):
                 tornado.web.RequestHandler: self,
             }
         )
-        kwargs.update(
-            {
-                name: value
-                for name, param in annotations.items()
-                if (value := mapping.get(param.annotation, util.UNSPECIFIED))
-            }
-        )
+        for name, param in annotations.items():
+            logger.debug(
+                'processing %s -> annotation=%r origin=%r',
+                name,
+                param.annotation,
+                typing.get_origin(param.annotation),
+            )
+
+            if typing.get_origin(param.annotation) is None:
+                if issubclass(param.annotation, pydantic.BaseModel):
+                    kwargs[name] = param.annotation.model_validate_json(
+                        self.request.body
+                    )
+                else:
+                    value = mapping.get(param.annotation, util.UNSPECIFIED)
+                    if value is not util.UNSPECIFIED:
+                        kwargs[name] = value
+            logger.debug(
+                'kwargs[%s] <- %r', name, kwargs.get(name, util.Unspecified())
+            )

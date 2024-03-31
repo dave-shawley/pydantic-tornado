@@ -6,6 +6,7 @@ import typing
 import unittest.mock
 import uuid
 
+import pydantic
 import yarl
 from pydantictornado import request_handling, routing
 from tornado import http1connection, httputil, testing, web
@@ -185,8 +186,6 @@ class ResponseHandlingTests(testing.AsyncHTTPTestCase):
         self,
         pattern: str,
         method: str,
-        # func: typing.Callable[
-        #     [], typing.Awaitable[request_handling.ResponseType] ],
         func: request_handling.RequestMethod,
     ) -> None:
         self.application.add_handlers(
@@ -276,6 +275,20 @@ class ResponseHandlingTests(testing.AsyncHTTPTestCase):
         body = json.loads(response.body.decode('utf-8'))
         self.assertEqual(expected, body)
 
+    def test_pydantic_request_body(self) -> None:
+        class Request(pydantic.BaseModel):
+            value: str
+
+        async def impl(req: Request) -> str:
+            return req.value
+
+        self.register_handler_function('/', 'POST', impl)
+        response = self.fetch(
+            '/', method='POST', body=json.dumps({'value': 'foo'}).encode()
+        )
+        self.assertEqual(200, response.code)
+        self.assertEqual('foo', json.loads(response.body.decode('utf-8')))
+
 
 class FullStackTests(testing.AsyncHTTPTestCase):
     application: web.Application  # assigned during setUp
@@ -295,6 +308,17 @@ class FullStackTests(testing.AsyncHTTPTestCase):
             'url': request.full_url(),
         }
 
+    async def item_lookup(
+        self, *, item_id: int | uuid.UUID, handler: web.RequestHandler
+    ) -> None:
+        self.handler_invoked = True
+        handler.write(
+            {
+                'is_int': isinstance(item_id, int),
+                'is_uuid': isinstance(item_id, uuid.UUID),
+            }
+        )
+
     def setUp(self) -> None:
         super().setUp()
         self.handler_invoked = False
@@ -310,6 +334,7 @@ class FullStackTests(testing.AsyncHTTPTestCase):
                     r'/status/(?P<status>.*)', get=self.status_handler
                 ),
                 routing.Route(r'/request', **echo),
+                routing.Route(r'/items/(?P<item_id>.*)', get=self.item_lookup),
             ]
         )
         return self.application
@@ -333,4 +358,23 @@ class FullStackTests(testing.AsyncHTTPTestCase):
     def test_incorrect_parameter_type(self) -> None:
         rsp = self.fetch('/status/whatever')
         self.assertEqual(400, rsp.code)
-        self.assertFalse(self.handler_invoked, 'Handler should not be called')
+        self.assertFalse(self.handler_invoked, 'Unexpected Handler call')
+
+    def test_item_lookup(self) -> None:
+        rsp = self.fetch('/items/42')
+        self.assertEqual(200, rsp.code)
+        self.assertTrue(self.handler_invoked, 'Handler not called')
+        body = json.loads(rsp.body.decode('utf-8'))
+        self.assertDictEqual(
+            {'is_int': True, 'is_uuid': False},
+            body,
+        )
+
+        rsp = self.fetch('/items/00000000-0000-0000-0000-000000000000')
+        self.assertEqual(200, rsp.code)
+        self.assertTrue(self.handler_invoked, 'Handler not called')
+        body = json.loads(rsp.body.decode('utf-8'))
+        self.assertDictEqual(
+            {'is_int': False, 'is_uuid': True},
+            body,
+        )

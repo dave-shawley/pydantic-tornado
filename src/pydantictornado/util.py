@@ -1,6 +1,7 @@
 import collections.abc
 import contextlib
 import datetime
+import functools
 import inspect
 import ipaddress
 import logging
@@ -25,7 +26,10 @@ DataInitializer = typing.Callable[
 class Unspecified:
     """Simple type that is never true"""
 
-    def __bool__(self) -> bool:
+    def __bool__(self) -> bool:  # pragma: nocover
+        # note that this method may or may not be necessary based
+        # on the implementation ... I'm leaving it here to avoid
+        # adding and removing it constantly
         return False
 
 
@@ -56,8 +60,18 @@ def apply_default(
     return value
 
 
+@functools.cache
 def get_logger_for(obj: object) -> logging.Logger:
-    """Retrieve a logger associated with `obj.__class__`"""
+    """Retrieve a logger for obj.__class__
+
+    >>> class C:
+    ...     def __init__(self):
+    ...         self.logger = get_logger_for(self)
+    >>> c = C()
+    >>> c.logger.name
+    'util.C'
+
+    """
     cls = obj.__class__
     return logging.getLogger(cls.__module__).getChild(cls.__name__)
 
@@ -132,6 +146,9 @@ class ClassMapping(collections.abc.MutableMapping[type, T]):
         *,
         initialize_data: DataInitializer[T] | None = None,
     ) -> None:
+        self.logger = logging.getLogger(__package__).getChild(
+            self.__class__.__name__
+        )
         self._data: list[tuple[type, T]] = []
         self._cache: dict[type, T] = {}
         self._initialize_data = initialize_data
@@ -175,7 +192,7 @@ class ClassMapping(collections.abc.MutableMapping[type, T]):
             try:
                 is_subclass = issubclass(item, base_cls)
             except TypeError as error:
-                get_logger_for(self).error(
+                self.logger.error(
                     'issubclass() failed for item %r and base %r: %s',
                     item,
                     base_cls,

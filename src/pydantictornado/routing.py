@@ -56,7 +56,7 @@ class _UnionPathConverter:
             # float('foo')    raises ValueError
             with contextlib.suppress(AttributeError, TypeError, ValueError):
                 return converter(value)
-        raise errors.ValueParseError(value, self.__class__)
+        raise errors.ValueParseError(value, self)
 
     def __eq__(self, other: object) -> bool:
         if other is self:
@@ -67,6 +67,12 @@ class _UnionPathConverter:
                 for x, y in zip(self.converters, other.converters, strict=True)
             )
         return NotImplemented
+
+    def __str__(self) -> str:
+        return '{}([{}])'.format(
+            self.__class__.__name__,
+            ', '.join(str(util.strip_annotation(c)) for c in self.converters),
+        )
 
 
 @functools.cache
