@@ -1,6 +1,7 @@
 import collections.abc
 import datetime
 import functools
+import inspect
 import ipaddress
 import re
 import types
@@ -13,7 +14,21 @@ import tornado.routing
 import tornado.web
 import yarl
 
-from pydantictornado import routing, util
+from pydantictornado import request_handling, routing, util
+
+
+class OperationAnnotation(pydantic.BaseModel):
+    """Meta information for OpenAPI Operations
+
+    Use the [describe_operation][] function to annotate
+    operations when you create the route.
+    """
+
+    summary: str | None = None
+    description: str | None = None
+    operation_id: str | None = None
+    deprecated: bool | None = None
+    tags: list[str] = pydantic.Field(default_factory=list)
 
 
 class SchemaExtra:
@@ -44,14 +59,33 @@ class Parameter(util.FieldOmittingMixin, pydantic.BaseModel):
     """
 
     OMIT_IF_NONE = ('description', 'explode', 'style')
+    OMIT_IF_EMPTY = ('schema_',)
     name: str
     in_: str = pydantic.Field(alias='in')
     description: str | None = None
     required: bool = False
     deprecated: bool = False
-    schema_: dict[str, object] | None = pydantic.Field(None, alias='schema')
+    schema_: dict[str, object] = pydantic.Field(
+        default_factory=dict, alias='schema'
+    )
     style: routing.ParameterStyle | None = None
     explode: bool | None = None
+
+
+class Operation(util.FieldOmittingMixin, pydantic.BaseModel):
+    """Describe a single API operation on a path
+
+    https://spec.openapis.org/oas/latest.html#operation-object
+    """
+
+    OMIT_IF_NONE = ('summary', 'description', 'operationId', 'deprecated')
+    OMIT_IF_EMPTY = ('tags',)
+
+    summary: str | None = None
+    description: str | None = None
+    operationId: str | None = None  # noqa: N815 -- camelCase ok here
+    deprecated: bool | None = None
+    tags: list[str] = pydantic.Field(default_factory=list)
 
 
 class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
@@ -60,11 +94,22 @@ class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
     https://spec.openapis.org/oas/latest.html#path-item-object
     """
 
-    OMIT_IF_NONE = ('summary', 'description')
+    OMIT_IF_NONE = (
+        'summary',
+        'description',
+        *(m.lower() for m in routing.HTTP_METHOD_NAMES),
+    )
     OMIT_IF_EMPTY = ('parameters',)
     summary: str | None = None
     description: str | None = None
     parameters: list[Parameter] = pydantic.Field(default_factory=list)
+    get: Operation | None = None
+    head: Operation | None = None
+    post: Operation | None = None
+    delete: Operation | None = None
+    patch: Operation | None = None
+    put: Operation | None = None
+    options: Operation | None = None
 
 
 def _initialize_type_map(
@@ -103,6 +148,9 @@ MutableDescription = dict[str, typing.Any]
 
 class APIDescription(pydantic.BaseModel):
     """Top-level OpenAPI Object
+
+    Call [describe_api][] to create an instance of the OpenAPI
+    specification directly from the application instance.
 
     https://spec.openapis.org/oas/latest.html#openapi-object
     """
@@ -250,7 +298,33 @@ def _describe_path(
         if param.schema_.get('type', '') == 'string':
             param.schema_.setdefault('pattern', pattern)
         desc.parameters.append(param)
+
+    if isinstance(route, routing.Route):
+        for method, impl in route.implementations:
+            op = Operation()
+            func, metadata = util.unwrap_annotation(impl)
+            if doc := inspect.getdoc(util.strip_annotation(func)):
+                _update_operation_from_docstring(op, doc)
+            for meta in metadata:
+                if isinstance(meta, OperationAnnotation):
+                    op.summary = util.apply_default(op.summary, meta.summary)
+                    op.description = util.apply_default(
+                        op.description, meta.description
+                    )
+                    op.operationId = util.apply_default(
+                        op.operationId, meta.operation_id
+                    )
+                    op.tags.extend(meta.tags)
+            setattr(desc, method.lower(), op)
+
     return desc
+
+
+def _update_operation_from_docstring(op: Operation, docstring: str) -> None:
+    lines = docstring.splitlines()
+    op.summary = lines.pop(0)
+    if lines and lines[0].strip() == '':
+        op.description = '\n'.join(lines[1:])
 
 
 def _describe_parameter(param_info: object, **defaults: object) -> Parameter:
@@ -344,3 +418,15 @@ def _translate_path_pattern(pattern: re.Pattern[str]) -> OpenAPIPath:
         patterns=patterns,
         path='/' if working == '/?' else working.removesuffix('/?'),
     )
+
+
+def describe_operation(
+    op: request_handling.RequestMethod, **kwargs: str | bool | list[str]
+) -> request_handling.RequestMethod:
+    """Annotate a request method with an OperationAnnotation"""
+    if kwargs:
+        op = typing.cast(
+            request_handling.RequestMethod,
+            typing.Annotated[op, OperationAnnotation.model_validate(kwargs)],
+        )
+    return op

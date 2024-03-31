@@ -216,6 +216,12 @@ class Route(tornado.routing.URLSpec):
             kwargs=target_kwargs,
         )
 
+    @property
+    def implementations(
+        self,
+    ) -> typing.Iterator[tuple[str, request_handling.RequestMethod]]:
+        yield from self._implementations.items()
+
 
 def _process_path_parameters(
     impl: request_handling.RequestMethod,

@@ -11,6 +11,8 @@ import yarl
 from pydantictornado import openapi, routing
 from tornado import httputil, web
 
+import tests
+
 
 class DescribeTypeTests(unittest.TestCase):
     def test_describing_primitive_types(self) -> None:
@@ -524,3 +526,81 @@ class DescribePathTests(unittest.TestCase):
             },
             description.parameters[0].schema_,
         )
+
+    def test_docstring_processing(self) -> None:
+        async def summary_only() -> None:
+            """Only a single summary line"""
+            return
+
+        async def has_description() -> None:
+            """A summary line
+
+            Along with multiple (very short) paragraphs.
+
+
+            The internal lines are maintained.
+
+                 As is leading whitespace. However, trailing
+            blank lines are discarded.
+
+
+
+
+            """
+
+        description = openapi._describe_path(
+            routing.Route(
+                '/',
+                get=summary_only,
+                delete=has_description,
+            ),
+            openapi.OpenAPIPath(),
+        )
+
+        description.get = tests.assert_is_not_none(description.get)
+        self.assertEqual('Only a single summary line', description.get.summary)
+        self.assertIsNone(description.get.description)
+
+        description.delete = tests.assert_is_not_none(description.delete)
+        self.assertEqual('A summary line', description.delete.summary)
+        self.assertEqual(
+            '\n'.join(  # noqa: FLY002 -- f-string makes no sense here
+                [
+                    'Along with multiple (very short) paragraphs.',
+                    '',
+                    '',
+                    'The internal lines are maintained.',
+                    '',
+                    '     As is leading whitespace. However, trailing',
+                    'blank lines are discarded.',
+                ]
+            ),
+            description.delete.description,
+        )
+
+    def test_annotated_operation(self) -> None:
+        async def f() -> None:
+            pass
+
+        description = openapi._describe_path(
+            routing.Route(
+                '/',
+                get=openapi.describe_operation(f, operation_id='get'),
+                post=typing.Annotated[
+                    f,
+                    'this is ignored',
+                    openapi.OperationAnnotation(operation_id='post'),
+                    'so is this',
+                ],
+                put=openapi.describe_operation(f),
+            ),
+            openapi.OpenAPIPath(),
+        )
+        description.get = tests.assert_is_not_none(description.get)
+        self.assertEqual('get', description.get.operationId)
+
+        description.post = tests.assert_is_not_none(description.post)
+        self.assertEqual('post', description.post.operationId)
+
+        description.put = tests.assert_is_not_none(description.put)
+        self.assertIsNone(description.put.operationId)
