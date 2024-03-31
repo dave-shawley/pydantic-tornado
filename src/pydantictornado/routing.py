@@ -39,6 +39,9 @@ class _PathConverter(typing.Protocol):
     def __metadata__(self) -> tuple[object, ...]:
         ...
 
+    def __hash__(self) -> int:
+        ...
+
 
 class _UnionPathConverter:
     """A PathConverter that implements first-match for union types"""
@@ -54,6 +57,29 @@ class _UnionPathConverter:
             with contextlib.suppress(AttributeError, TypeError, ValueError):
                 return converter(value)
         raise errors.ValueParseError(value, self.__class__)
+
+    def __eq__(self, other: object) -> bool:
+        if other is self:
+            return True
+        if isinstance(other, self.__class__):
+            return all(
+                _compare(util.strip_annotation(x), util.strip_annotation(y))
+                for x, y in zip(self.converters, other.converters, strict=True)
+            )
+        return NotImplemented
+
+
+@functools.cache
+def _compare(a: object, b: object) -> bool:
+    if a is b:
+        return True
+    if isinstance(a, functools.partial) and isinstance(b, functools.partial):
+        # special handling is required for functools.partial instances
+        # https://github.com/python/cpython/issues/65329
+        return (
+            a.func == b.func and a.args == b.args and a.keywords == b.keywords
+        )
+    return a == b
 
 
 def _build_coercion(param: inspect.Parameter) -> _PathConverter:

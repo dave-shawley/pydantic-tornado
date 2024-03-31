@@ -1,6 +1,7 @@
 import asyncio
 import collections.abc
 import datetime
+import functools
 import ipaddress
 import re
 import typing
@@ -213,20 +214,20 @@ class RouteTests(unittest.TestCase):
             coercion_func(1.23)
 
     def test_incongruent_parameter_types(self) -> None:
-        async def int_impl(*, _id: int) -> None:
+        async def impl(*, _id: int | uuid.UUID) -> None:
             pass
 
-        async def another_int_impl(*, _id: int) -> None:
+        async def another_impl(*, _id: int | uuid.UUID) -> None:
             pass
 
         async def str_impl(*, _id: str) -> None:
             pass
 
         with self.assertRaises(errors.PathTypeMismatchError):
-            routing.Route(r'/(?P<_id>.*)', get=int_impl, delete=str_impl)
+            routing.Route(r'/(?P<_id>.*)', get=str_impl, delete=impl)
 
         # should not raise
-        routing.Route(r'/(?P<_id>.*)', get=int_impl, delete=another_int_impl)
+        routing.Route(r'/(?P<_id>.*)', get=impl, delete=another_impl)
 
 
 class UUIDWrapperTests(unittest.TestCase):
@@ -313,3 +314,38 @@ class ParsedMetadataTests(unittest.TestCase):
         if not schemas:
             self.fail(f'Missing parameter annotation for {param_name}')
         self.assertIn(expected_schema, schemas)
+
+
+class EdgeCaseTests(unittest.TestCase):
+    def test_union_path_converter_equality(self) -> None:
+        converter = routing._UnionPathConverter(
+            converters=[
+                typing.Annotated[
+                    functools.partial(int, base=10),
+                    routing.ParameterAnnotation(schema_={'tyoe': 'int'}),
+                ],  # type: ignore[list-item]
+                typing.Annotated[
+                    util.convert_bool,
+                    routing.ParameterAnnotation(schema_={'type': 'boolean'}),
+                ],  # type: ignore[list-item]
+            ]
+        )
+
+        self.assertEqual(converter, converter, 'Convert is equal to itself')
+        self.assertNotEqual(
+            converter,
+            routing._UnionPathConverter(
+                converters=reversed(converter.converters)
+            ),
+            'Converters are equal only if the coercions are in the same order',
+        )
+        self.assertEqual(
+            converter,
+            routing._UnionPathConverter(
+                converters=[
+                    functools.partial(int, base=10),  # type: ignore[list-item]
+                    util.convert_bool,  # type: ignore[list-item]
+                ]
+            ),
+            'Annotations are ignored when comparing converters',
+        )
