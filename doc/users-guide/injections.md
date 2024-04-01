@@ -20,10 +20,17 @@ from strings to Python values based on the type annotation.
 
 ### Request body
 
+You can access a deserialized version of the request body by adding a parameter that is
+typed as a Pydantic object.
+
 !!! warning
 
-    This is not currently implemented. The request body will be passed as a parameter
-    identified by having a Pydantic model as its type annotation.
+    **All** parameters that are typed as [pydantic.BaseModel][] subclasses are
+    deserialized. If you include multiple model parameters, then the request body
+    is deserialized multiple times and **must** match each model type.
+
+You can also access the request by injecting a [tornado.httputil.HTTPServerRequest][]
+parameter and using the `body` property.
 
 ### Everything else
 
@@ -32,6 +39,9 @@ from strings to Python values based on the type annotation.
 | `tornado.httputil.HTTPServerRequest` | The request being processed                                       |
 | `tornado.web.Application`            | The `application` attribute from the request handler              |
 | `tornado.web.RequestHandler`         | The [tornado.web.RequestHandler][] that is processing the request |
+
+You can access most of the traditional Tornado interface by injecting a
+[tornado.web.RequestHandler][] parameter.
 
 ## Supported parameter types
 
@@ -57,9 +67,9 @@ approach. Boolean values are parsed as integers and anything non-zero is convert
 That's fine. There are two global `set[str]` values that you can modify to set which
 strings are considered *truthy* and *falsy*.
 
-#### ::: pydantictornado.routing.BOOLEAN_FALSE_STRINGS
+#### ::: pydantictornado.util.BOOLEAN_FALSE_STRINGS
 
-#### ::: pydantictornado.routing.BOOLEAN_TRUE_STRINGS
+#### ::: pydantictornado.util.BOOLEAN_TRUE_STRINGS
 
 !!! warning
 

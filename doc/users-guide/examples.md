@@ -39,13 +39,13 @@ if __name__ == '__main__':
 ## Simple route returning a JSON object
 
 Whatever a request handler returns is passed to [tornado.web.RequestHandler.write][]
-after serializing it with [json.dumps][].
+after serializing it with a slightly extended [json.dumps][].
 
 ```python
 import datetime
 
-async def handler() -> dict[str, str]:
-    return {'now': datetime.datetime.now(datetime.UTC).isoformat()}
+async def handler() -> dict[str, datetime.datetime]:
+    return {'now': datetime.datetime.now(datetime.UTC)}
 ```
 
 !!! note

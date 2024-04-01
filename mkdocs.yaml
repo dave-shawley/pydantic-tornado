@@ -31,6 +31,7 @@ nav:
           - adr/0001-record-architecture-decisions.md
           - adr/0002-generate-documentation-using-mkdocs.md
           - adr/0003-type-annotations.md
+  - todo.md
 
 plugins:
   - autorefs
@@ -40,8 +41,10 @@ plugins:
       handlers:
         python_xref:
           import:
+            - "https://docs.pydantic.dev/latest/objects.inv"
             - "https://docs.python.org/3/objects.inv"
             - "https://www.tornadoweb.org/en/stable/objects.inv"
+            - "https://yarl.aio-libs.org/en/stable/objects.inv"
           options:
             docstring_style: "sphinx"
             docstring_section_style: "list"

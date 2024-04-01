@@ -37,18 +37,19 @@ I really want this to go past the vapourware stage, but it is little more than a
 === "Request processing"
 
     - [X] Injection of Tornado handling context
-    - [ ] Pydantic request body deserialization
+    - [X] Pydantic request body deserialization
 
 === "Response processing"
 
     - [X] JSON responses from simple types
     - [ ] [Proactive content negotiation](https://www.rfc-editor.org/rfc/rfc7231#section-3.4.1)
-    - [ ] Pydantic response serialization
+    - [X] Pydantic response serialization
 
 === "OpenAPI"
 
     - [X] OpenAPI schema from basic types
     - [ ] OpenAPI schema from Pydantic
+    - [ ] OpenAPI schema generation for operations
     - [ ] Handler for generated OpenAPI JSON
 
 ## Sales pitch

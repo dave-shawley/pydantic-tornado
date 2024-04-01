@@ -40,6 +40,7 @@ BOOLEAN_FALSE_STRINGS: set[str] = set()
 """String values that are parsed as `False` for boolean parameters"""
 
 UNSPECIFIED = Unspecified()
+"""An unspecified value when `None` is not appropriate"""
 
 
 def apply_default(
@@ -252,6 +253,8 @@ class ClassMapping(collections.abc.MutableMapping[type, T]):
 
 @typing.runtime_checkable
 class HasIsoFormat(typing.Protocol):
+    """Runtime checkable protocol that detects the isoformat method"""
+
     def isoformat(self, spec: str = ...) -> str:
         ...
 
@@ -259,6 +262,22 @@ class HasIsoFormat(typing.Protocol):
 def json_serialize_hook(
     obj: object,
 ) -> bool | float | int | str | dict[str, object]:
+    """Standard `default` function passed to json.dump
+
+    This function is used to serialize a number of non-standard
+    objects in response values.
+
+    | Type                      | Description                     |
+    | ------------------------- | ------------------------------- |
+    | has attribute isoformat   | `obj.isoformat()`               |
+    | [ipaddress.IPv4Address][] | `str(obj)`                      |
+    | [ipaddress.IPv6Address][] | `str(obj)`                      |
+    | [uuid.UUID][]             | `str(obj)`                      |
+    | [yarl.URL][]              | `str(obj)`                      |
+    | [datetime.timedelta][]    | serialized as ISO-8601 duration |
+    | Pydantic models           | `obj.model_dump(by_alias=True)` |
+
+    """
     if isinstance(obj, HasIsoFormat):
         return obj.isoformat()
     if isinstance(
@@ -277,10 +296,10 @@ def json_serialize_hook(
 def convert_bool(value: str) -> bool:
     """Convert `value` into a Boolean based on configuration
 
-    This function uses the [BOOLEAN_TRUE_STRINGS][] and
-    [BOOLEAN_FALSE_STRINGS][] constants to convert `value`
-    to a `bool`. If there is not a direct string match, it
-    tries to convert `value` to an int and then casts that
+    This function uses the [pydantictornado.util.BOOLEAN_TRUE_STRINGS][]
+    and [pydantictornado.util.BOOLEAN_FALSE_STRINGS][] constants to
+    convert `value` to a `bool`. If there is not a direct string
+    match, it tries to convert `value` to an int and then casts that
     to a Boolean value.
 
     Raises [pydantictornado.errors.ValueParseError][] if it
