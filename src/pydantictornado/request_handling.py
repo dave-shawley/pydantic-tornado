@@ -35,6 +35,7 @@ ResponseType: typing.TypeAlias = (  # - mypy doesn't support type here
     | datetime.timedelta
     | ipaddress.IPv4Address
     | ipaddress.IPv6Address
+    | pydantic.BaseModel
     | uuid.UUID
     | yarl.URL
     | collections.abc.Mapping[str, 'ResponseType']
