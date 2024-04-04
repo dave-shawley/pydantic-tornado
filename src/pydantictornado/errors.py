@@ -55,7 +55,9 @@ class UnroutableParameterTypeError(PydanticTornadoError, TypeError):
 class CoroutineRequiredError(ConfigurationError, ValueError):
     def __init__(self, value: object) -> None:
         value_description = getattr(value, '__name__', value)
-        super().__init__(f'{value_description!r} is not a coroutine')
+        super().__init__(
+            f'{value_description!r} is a {type(value)}, expected a coroutine'
+        )
 
 
 class NoHttpMethodsDefinedError(ConfigurationError):
