@@ -171,7 +171,7 @@ def _initialize_converters(
         ],
         int: typing.Annotated[
             functools.partial(int, base=10),
-            ParameterAnnotation(schema_={'type': 'int'}),
+            ParameterAnnotation(schema_={'type': 'integer'}),
         ],
         str: typing.Annotated[
             lambda s: s, ParameterAnnotation(schema_={'type': 'string'})

@@ -503,7 +503,12 @@ class DescribePathTests(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            {'oneOf': [{'type': 'int'}, {'type': 'string', 'format': 'uuid'}]},
+            {
+                'oneOf': [
+                    {'type': 'integer'},
+                    {'type': 'string', 'format': 'uuid'},
+                ]
+            },
             description.parameters[0].schema_,
         )
 
@@ -519,7 +524,7 @@ class DescribePathTests(unittest.TestCase):
         self.assertEqual(
             {
                 'oneOf': [
-                    {'type': 'int'},
+                    {'type': 'integer'},
                     {'type': 'string', 'format': 'uuid'},
                     {'type': 'null'},
                 ]

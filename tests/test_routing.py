@@ -259,7 +259,7 @@ class ParsedMetadataTests(unittest.TestCase):
         expectations = {
             bool: {'type': 'boolean'},
             float: {'type': 'float'},
-            int: {'type': 'int'},
+            int: {'type': 'integer'},
             str: {'type': 'string'},
             datetime.date: {'type': 'string', 'format': 'date'},
             datetime.datetime: {'type': 'string', 'format': 'date-time'},
@@ -287,7 +287,7 @@ class ParsedMetadataTests(unittest.TestCase):
             'obj',
             {
                 'oneOf': [
-                    {'type': 'int'},
+                    {'type': 'integer'},
                     {'type': 'string', 'format': 'uuid'},
                 ]
             },
@@ -322,7 +322,7 @@ class EdgeCaseTests(unittest.TestCase):
             converters=[
                 typing.Annotated[
                     functools.partial(int, base=10),
-                    routing.ParameterAnnotation(schema_={'tyoe': 'int'}),
+                    routing.ParameterAnnotation(schema_={'type': 'integer'}),
                 ],  # type: ignore[list-item]
                 typing.Annotated[
                     util.convert_bool,
