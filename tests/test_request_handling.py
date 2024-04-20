@@ -8,7 +8,7 @@ import uuid
 
 import pydantic
 import yarl
-from pydantictornado import request_handling, routing
+from pydantictornado import openapi, request_handling, routing
 from tornado import http1connection, httputil, testing, web
 from tornado.web import Application
 
@@ -308,6 +308,7 @@ class FullStackTests(testing.AsyncHTTPTestCase):
             'url': request.full_url(),
         }
 
+    @openapi.describe_operation(summary='Retrive a single item')
     async def item_lookup(
         self, *, item_id: int | uuid.UUID, handler: web.RequestHandler
     ) -> None:
@@ -318,6 +319,17 @@ class FullStackTests(testing.AsyncHTTPTestCase):
                 'is_uuid': isinstance(item_id, uuid.UUID),
             }
         )
+
+    @openapi.omit
+    async def item_deleter(
+        self,
+        *,
+        item_id: int | uuid.UUID,
+        handler: web.RequestHandler,
+    ) -> None:
+        self.handler_invoked = True
+        handler.write({'item_id': str(item_id)})
+        handler.set_status(200)
 
     def setUp(self) -> None:
         super().setUp()
@@ -334,7 +346,11 @@ class FullStackTests(testing.AsyncHTTPTestCase):
                     r'/status/(?P<status>.*)', get=self.status_handler
                 ),
                 routing.Route(r'/request', **echo),
-                routing.Route(r'/items/(?P<item_id>.*)', get=self.item_lookup),
+                routing.Route(
+                    r'/items/(?P<item_id>.*)',
+                    get=self.item_lookup,
+                    delete=self.item_deleter,
+                ),
             ]
         )
         return self.application
@@ -378,3 +394,17 @@ class FullStackTests(testing.AsyncHTTPTestCase):
             {'is_int': False, 'is_uuid': True},
             body,
         )
+
+    def test_calling_omitted_operation(self) -> None:
+        item_id = uuid.uuid4()
+        rsp = self.fetch(f'/items/{item_id}', method='DELETE')
+        self.assertEqual(200, rsp.code)
+        body = json.loads(rsp.body.decode('utf-8'))
+        self.assertDictEqual({'item_id': str(item_id)}, body)
+
+    def test_calling_described_operation(self) -> None:
+        item_id = uuid.uuid4()
+        rsp = self.fetch(f'/items/{item_id}')
+        self.assertEqual(200, rsp.code)
+        body = json.loads(rsp.body.decode('utf-8'))
+        self.assertDictEqual({'is_int': False, 'is_uuid': True}, body)

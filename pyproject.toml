@@ -90,6 +90,7 @@ ignore = [
   "EM",  # raise Error('some literal') is okay IMO
   "ISC",  # implicitly concat'ing strings makes format non-deterministic
   "PT",  # flake8-pytest-style
+  "RSE102",  # I like raising exception instances instead of classes
   "TRY400",  # logging.exception is not universally preferred
   "UP040",  # mypy doesn't support type instead of typing.TypeAlias
 ]

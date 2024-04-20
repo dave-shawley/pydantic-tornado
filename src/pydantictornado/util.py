@@ -15,9 +15,13 @@ import yarl
 from pydantictornado import errors
 
 AnyCallable: typing.TypeAlias = typing.Callable[..., object | None]
+SomeCallable = typing.TypeVar(
+    'SomeCallable', bound=typing.Callable[..., typing.Any]
+)
 DefaultType = typing.TypeVar('DefaultType')
 
 T = typing.TypeVar('T')
+SomeType = typing.TypeVar('SomeType', bound=type)
 DataInitializer = typing.Callable[
     [collections.abc.MutableMapping[type, T]], None
 ]
@@ -73,7 +77,9 @@ def get_logger_for(obj: object) -> logging.Logger:
     'util.C'
 
     """
-    cls = obj.__class__
+    if isinstance(obj, types.FunctionType):
+        return logging.getLogger(obj.__module__).getChild(obj.__name__)
+    cls = obj if isinstance(obj, type) else type(obj)
     return logging.getLogger(cls.__module__).getChild(cls.__name__)
 
 
@@ -187,9 +193,9 @@ class ClassMapping(collections.abc.MutableMapping[type, T]):
         *,
         default: DefaultType | Unspecified = UNSPECIFIED,
     ) -> int | DefaultType:
-        index = 0
         item = strip_annotation(item)
-        for base_cls, _ in self._data:
+        for index, data in enumerate(self._data):
+            base_cls, _ = data
             try:
                 is_subclass = issubclass(item, base_cls)
             except TypeError as error:
@@ -203,7 +209,6 @@ class ClassMapping(collections.abc.MutableMapping[type, T]):
             else:
                 if is_subclass:
                     return index
-            index += 1
         if not isinstance(default, Unspecified):
             return default
         raise KeyError(item)
@@ -344,12 +349,12 @@ def parse_date(value: str) -> datetime.date:
     return parse_datetime(value).date()
 
 
-def strip_annotation(t: T) -> T:
+def strip_annotation(t: SomeType) -> SomeType:
     """Remove annotations from `t`"""
     return unwrap_annotation(t)[0]
 
 
-def unwrap_annotation(v: T) -> tuple[T, tuple[object, ...]]:
+def unwrap_annotation(v: SomeType) -> tuple[SomeType, tuple[object, ...]]:
     """Separate the origin value and metadata if `v` is annotated"""
     if typing.get_origin(v) == typing.Annotated:
         # NB ... typing.get_origin() returns None when given a
@@ -364,7 +369,20 @@ def is_coroutine_function(
     obj: object | type,
 ) -> typing.TypeGuard[typing.Callable[..., typing.Awaitable[typing.Any]]]:
     """inspect.iscoroutinefunction that unwraps annotations first"""
-    return inspect.iscoroutinefunction(strip_annotation(obj))
+    return inspect.iscoroutinefunction(obj)
+
+
+def clone_function(f: SomeCallable) -> SomeCallable:
+    """Create a new function instance that shares code with `f`"""
+    new_func = types.FunctionType(
+        f.__code__,
+        f.__globals__,
+        f.__name__,
+        f.__defaults__,
+        f.__closure__,
+    )
+    functools.update_wrapper(new_func, f)
+    return typing.cast(SomeCallable, new_func)
 
 
 def _format_isoduration(seconds: float) -> str:

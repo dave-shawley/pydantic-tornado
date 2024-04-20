@@ -84,3 +84,7 @@ class PathTypeMismatchError(ConfigurationError):
             f'Implementations for {path_pattern.pattern!r} disagree '
             f'on types for {path_var!r}'
         )
+
+
+class InvalidDescribeOperationError(ConfigurationError, RuntimeError):
+    """Describe operation called without parameters"""

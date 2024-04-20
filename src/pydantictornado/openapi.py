@@ -14,7 +14,7 @@ import tornado.routing
 import tornado.web
 import yarl
 
-from pydantictornado import request_handling, routing, util
+from pydantictornado import errors, metadata, request_handling, routing, util
 
 
 class OperationAnnotation(pydantic.BaseModel):
@@ -29,6 +29,18 @@ class OperationAnnotation(pydantic.BaseModel):
     operation_id: str | None = None
     deprecated: bool | None = None
     tags: list[str] = pydantic.Field(default_factory=list)
+
+
+class Omit:
+    """Use this annotation to omit a method from the OpenAPI specification"""
+
+
+PS = typing.ParamSpec('PS')
+
+
+def omit(o: typing.Callable[PS, util.T]) -> typing.Callable[PS, util.T]:
+    """Prevent something from being described in the OpenAPI specification"""
+    return metadata.append(o, Omit())
 
 
 class SchemaExtra:
@@ -72,20 +84,66 @@ class Parameter(util.FieldOmittingMixin, pydantic.BaseModel):
     explode: bool | None = None
 
 
+ContentType: typing.TypeAlias = str
+"""Media type specification"""
+
+
+class MediaTypeObject(util.FieldOmittingMixin, pydantic.BaseModel):
+    """OpenAPI Media Type Object
+
+    https://spec.openapis.org/oas/latest.html#media-type-object
+    """
+
+    OMIT_IF_EMPTY = ('schema_',)
+    schema_: dict[str, object] = pydantic.Field(
+        default_factory=dict, alias='schema'
+    )
+
+
+class ResponseObject(util.FieldOmittingMixin, pydantic.BaseModel):
+    """OpenAPI Response Object
+
+    https://spec.openapis.org/oas/latest.html#response-object
+    """
+
+    OMIT_IF_EMPTY = ('content', 'headers', 'links')
+    description: str
+    headers: dict[str, object] = pydantic.Field(default_factory=dict)
+    content: dict[ContentType, MediaTypeObject] = pydantic.Field(
+        default_factory=dict
+    )
+    links: dict[str, object] = pydantic.Field(default_factory=dict)
+
+
+ResponseStatus: typing.TypeAlias = str
+
+
 class Operation(util.FieldOmittingMixin, pydantic.BaseModel):
     """Describe a single API operation on a path
 
     https://spec.openapis.org/oas/latest.html#operation-object
     """
 
-    OMIT_IF_NONE = ('summary', 'description', 'operationId', 'deprecated')
-    OMIT_IF_EMPTY = ('tags',)
+    OMIT_IF_NONE = (
+        'summary',
+        'description',
+        'operationId',
+        'deprecated',
+        'responses',
+    )
+    OMIT_IF_EMPTY = ('tags', 'responses')
 
     summary: str | None = None
     description: str | None = None
     operationId: str | None = None  # noqa: N815 -- camelCase ok here
     deprecated: bool | None = None
     tags: list[str] = pydantic.Field(default_factory=list)
+    responses: dict[ResponseStatus, ResponseObject] = pydantic.Field(
+        default_factory=dict
+    )
+
+
+_OPERATION_NAMES = tuple(m.lower() for m in routing.HTTP_METHOD_NAMES)
 
 
 class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
@@ -94,11 +152,7 @@ class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
     https://spec.openapis.org/oas/latest.html#path-item-object
     """
 
-    OMIT_IF_NONE = (
-        'summary',
-        'description',
-        *(m.lower() for m in routing.HTTP_METHOD_NAMES),
-    )
+    OMIT_IF_NONE = ('summary', 'description', *_OPERATION_NAMES)
     OMIT_IF_EMPTY = ('parameters',)
     summary: str | None = None
     description: str | None = None
@@ -110,6 +164,12 @@ class PathDescription(util.FieldOmittingMixin, pydantic.BaseModel):
     patch: Operation | None = None
     put: Operation | None = None
     options: Operation | None = None
+
+    @property
+    def empty(self) -> bool:
+        return not any(
+            getattr(self, method) is not None for method in _OPERATION_NAMES
+        )
 
 
 def _initialize_type_map(
@@ -178,7 +238,9 @@ def describe_api(application: tornado.web.Application) -> APIDescription:
     for rule in application.wildcard_router.rules:
         if isinstance(rule, routing.Route | tornado.routing.URLSpec):
             path = _translate_path_pattern(rule.regex)
-            spec.paths[path.path] = _describe_path(rule, path)
+            description = _describe_path(rule, path)
+            if not description.empty:
+                spec.paths[path.path] = description
         else:
             warnings.warn(
                 f'Rule {rule!r} not processed, unhandled rule '
@@ -230,12 +292,12 @@ def _describe_type(t: Describable) -> MutableDescription:
         return openapi_extra.apply(v.copy())
 
     if issubclass(t, collections.abc.Mapping):
-        raise NotImplementedError('Mapping not implemented')
+        return openapi_extra.apply({'type': 'object'})
 
     if issubclass(t, collections.abc.Collection):
         return openapi_extra.apply(_describe_collection(t, alias_args))
 
-    raise ValueError
+    raise ValueError(f'Unexpected value of type {type(t)}')  # noqa: TRY003
 
 
 def _describe_literals(t: Describable) -> MutableDescription | None:
@@ -281,43 +343,78 @@ def _describe_collection(
 def _describe_path(
     route: tornado.routing.URLSpec, path_info: OpenAPIPath
 ) -> PathDescription:
+    logger = util.get_logger_for(_describe_path)
     desc = PathDescription()
+
     for name, pattern in path_info.patterns.items():
-        defaults = {
-            'name': name,
-            'in': 'path',
-            'required': True,
-            'schema': {'type': 'string'},
-        }
-        if route.kwargs and (
-            path_info := route.kwargs.get('path_types', {}).get(name)
-        ):
-            param = _describe_parameter(path_info, **defaults)
-        else:
-            param = Parameter.model_validate(defaults)
-        if param.schema_.get('type', '') == 'string':
-            param.schema_.setdefault('pattern', pattern)
-        desc.parameters.append(param)
+        desc.parameters.append(_describe_path_parameter(name, pattern, route))
 
     if isinstance(route, routing.Route):
         for method, impl in route.implementations:
-            op = Operation()
-            func, metadata = util.unwrap_annotation(impl)
-            if doc := inspect.getdoc(util.strip_annotation(func)):
-                _update_operation_from_docstring(op, doc)
-            for meta in metadata:
-                if isinstance(meta, OperationAnnotation):
-                    op.summary = util.apply_default(op.summary, meta.summary)
-                    op.description = util.apply_default(
-                        op.description, meta.description
-                    )
-                    op.operationId = util.apply_default(
-                        op.operationId, meta.operation_id
-                    )
-                    op.tags.extend(meta.tags)
-            setattr(desc, method.lower(), op)
+            try:
+                op = _describe_operation(impl)
+            except Exception:
+                logger.error('Failed to process %s %r', method, impl)
+                raise
+            if not isinstance(op, Omit):
+                setattr(desc, method.lower(), op)
+    elif issubclass(route.handler_class, tornado.web.RequestHandler):
+        for method in route.handler_class.SUPPORTED_METHODS:
+            impl = getattr(route.handler_class, method.lower())
+            if impl != route.handler_class._unimplemented_method:  # noqa: SLF001
+                op = _describe_operation(impl)
+                if not isinstance(op, Omit):
+                    setattr(desc, method.lower(), op)
 
     return desc
+
+
+def _describe_path_parameter(
+    name: str,
+    pattern: str,
+    route: tornado.routing.URLSpec,
+) -> Parameter:
+    defaults = {
+        'name': name,
+        'in': 'path',
+        'required': True,
+        'schema': {'type': 'string'},
+    }
+    if route.kwargs and (
+        path_info := route.kwargs.get('path_types', {}).get(name)
+    ):
+        param = _describe_parameter(path_info, **defaults)
+    else:
+        param = Parameter.model_validate(defaults)
+    if param.schema_.get('type', '') == 'string':
+        param.schema_.setdefault('pattern', pattern)
+    return param
+
+
+def _describe_operation(
+    func: request_handling.RequestMethod
+) -> Operation | Omit:
+    if metadata.collect(func, Omit):
+        return Omit()
+
+    op = Operation()
+    if doc := inspect.getdoc(func):
+        _update_operation_from_docstring(op, doc)
+    sig = inspect.signature(func)
+    if sig.return_annotation is not inspect.Signature.empty:
+        resp = ResponseObject(description='default')
+        resp.content['application/json'] = MediaTypeObject(
+            schema=(_describe_type(sig.return_annotation))
+        )
+        op.responses['default'] = resp
+
+    for meta in metadata.collect(func, OperationAnnotation):
+        op.summary = util.apply_default(op.summary, meta.summary)
+        op.description = util.apply_default(op.description, meta.description)
+        op.operationId = util.apply_default(op.operationId, meta.operation_id)
+        op.tags.extend(meta.tags)
+
+    return op
 
 
 def _update_operation_from_docstring(op: Operation, docstring: str) -> None:
@@ -328,17 +425,21 @@ def _update_operation_from_docstring(op: Operation, docstring: str) -> None:
 
 
 def _describe_parameter(param_info: object, **defaults: object) -> Parameter:
+    alternatives = []
     param = Parameter.model_validate(defaults)
-    for item in getattr(param_info, '__metadata__', []):
+    for item in metadata.extract(param_info):
         if isinstance(item, SchemaExtra):
             param.schema_.update(item.extra)
         elif isinstance(item, routing.ParameterAnnotation):
-            if 'oneOf' in item.schema_ or 'allOf' in item.schema_:
-                param.schema_.pop('type', None)
-            param.schema_.update(item.schema_)
+            alternatives.append(item.schema_)
             param.description = util.apply_default(
                 param.description, item.description
             )
+    if alternatives:
+        if len(alternatives) == 1:
+            param.schema_.update(alternatives[0])
+        else:
+            param.schema_ = {'oneOf': alternatives}
     return param
 
 
@@ -348,12 +449,12 @@ def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:
 
     if isinstance(t, AnnotationType):
         try:
-            metadata: list[object] = t.__metadata__  # type: ignore[attr-defined]
+            md: list[object] = t.__metadata__  # type: ignore[attr-defined]
             unwrapped = t.__origin__  # type: ignore[attr-defined]
         except AttributeError:  # pragma: nocover -- being overly cautious here
             pass
         else:
-            for meta in metadata:
+            for meta in md:
                 if isinstance(meta, SchemaExtra):
                     extra.update(meta)
 
@@ -420,13 +521,43 @@ def _translate_path_pattern(pattern: re.Pattern[str]) -> OpenAPIPath:
     )
 
 
+@typing.overload
 def describe_operation(
-    op: request_handling.RequestMethod, **kwargs: str | bool | list[str]
+    f: request_handling.RequestMethod, /, **kwargs: str | bool | list[str]
 ) -> request_handling.RequestMethod:
-    """Annotate a request method with an OperationAnnotation"""
-    if kwargs:
-        op = typing.cast(
-            request_handling.RequestMethod,
-            typing.Annotated[op, OperationAnnotation.model_validate(kwargs)],
-        )
-    return op
+    ...
+
+
+@typing.overload
+def describe_operation(
+    **kwargs: str | bool | list[str]
+) -> typing.Callable[
+    [request_handling.RequestMethod], request_handling.RequestMethod
+]:
+    ...
+
+
+def describe_operation(
+    op: request_handling.RequestMethod | None = None,
+    /,
+    **kwargs: str | bool | list[str],
+) -> (
+    request_handling.RequestMethod
+    | typing.Callable[
+        [request_handling.RequestMethod], request_handling.RequestMethod
+    ]
+):
+    if not kwargs:
+        raise errors.InvalidDescribeOperationError()
+
+    anno = OperationAnnotation.model_validate(kwargs)
+
+    def outer(
+        f: request_handling.RequestMethod
+    ) -> request_handling.RequestMethod:
+        return metadata.append(f, anno)
+
+    if op is not None:
+        return outer(op)
+
+    return outer

@@ -1,17 +1,20 @@
 import datetime
 import ipaddress
+import logging
 import re
 import typing
-import unittest
+import unittest.mock
 import uuid
 
 import pydantic
 import tornado.routing
 import yarl
-from pydantictornado import openapi, routing
+from pydantictornado import errors, metadata, openapi, routing, util
 from tornado import httputil, web
 
 import tests
+
+IdType: typing.TypeAlias = int | uuid.UUID
 
 
 class DescribeTypeTests(unittest.TestCase):
@@ -25,11 +28,10 @@ class DescribeTypeTests(unittest.TestCase):
         self.assertEqual({'type': 'array'}, openapi.describe_type(tuple))
         self.assertEqual({'type': 'null'}, openapi.describe_type(None))
         self.assertEqual({'type': 'null'}, openapi.describe_type(type(None)))
+        self.assertEqual({'type': 'object'}, openapi.describe_type(dict))
 
         with self.assertRaises(ValueError):
             openapi.describe_type(object)
-        with self.assertRaises(NotImplementedError):
-            openapi.describe_type(dict)
 
     def test_describining_library_types(self) -> None:
         self.assertEqual(
@@ -424,9 +426,11 @@ class DescribeApiTests(unittest.TestCase):
         )
 
     def test_application_with_urlspec_routes(self) -> None:
-        app = web.Application(
-            [web.url(r'/items/(?P<id>.*)', web.RequestHandler)]
-        )
+        class Handler(web.RequestHandler):
+            async def get(self) -> None:
+                pass
+
+        app = web.Application([web.url(r'/items/(?P<id>.*)', Handler)])
         description = openapi.describe_api(app).model_dump(by_alias=True)
         self.assertSetEqual(
             {'/items/{id}'},
@@ -462,22 +466,35 @@ class DescribeApiTests(unittest.TestCase):
             def __init__(self) -> None:
                 super().__init__(MethodMatcher('GET'), object())
 
-        app = web.Application([MethodMatchingRoute()])
+        app = web.Application(
+            [MethodMatchingRoute(), web.url('/', web.RequestHandler)]
+        )
         with self.assertWarns(UserWarning):
             description = openapi.describe_api(app)
         self.assertEqual(0, len(description.paths))
 
+    def test_unannotated_routes(self) -> None:
+        class RequestHandler(web.RequestHandler):
+            def get(self):  # type: ignore[no-untyped-def] # noqa: ANN202
+                pass
+
+        app = web.Application([web.url(r'/', RequestHandler)])
+        description = openapi.describe_api(app).model_dump(by_alias=True)
+        self.assertSetEqual({'/'}, set(description['paths'].keys()))
+        self.assertEqual(['get'], list(description['paths']['/']))
+        self.assertEqual({}, description['paths']['/']['get'])
+
 
 class DescribePathTests(unittest.TestCase):
     def test_mixed_annotations(self) -> None:
-        IdType = typing.Annotated[  # noqa: N806 -- variable named as class
+        ComplexIdType = typing.Annotated[  # noqa: N806 -- variable named as class
             int,
             openapi.SchemaExtra(summary='Unique item identifer'),
             routing.ParameterAnnotation(description='More information here'),
             'another annotation that we ignore',
         ]
 
-        async def op(item_id: IdType) -> IdType:
+        async def op(item_id: ComplexIdType) -> ComplexIdType:
             return item_id
 
         description = openapi._describe_path(
@@ -491,17 +508,14 @@ class DescribePathTests(unittest.TestCase):
         )
 
     def test_union_parameters(self) -> None:
-        IdType: typing.TypeAlias = int | uuid.UUID
-
         async def op(item_id: IdType) -> IdType:
             return item_id
 
-        description = openapi._describe_path(  # private use ok
-            routing.Route(r'/items/(?P<item_id>\d+)', get=op),
-            openapi.OpenAPIPath(
-                path='/items/{item_id}', patterns={'item_id': r'\d+'}
-            ),
+        r = routing.Route(r'/items/(?P<item_id>\d+)', get=op)
+        p = openapi.OpenAPIPath(
+            path='/items/{item_id}', patterns={'item_id': r'\d+'}
         )
+        description = openapi._describe_path(r, p)
         self.assertEqual(
             {
                 'oneOf': [
@@ -533,6 +547,7 @@ class DescribePathTests(unittest.TestCase):
         )
 
     def test_docstring_processing(self) -> None:
+        # fmt: off
         async def summary_only() -> None:
             """Only a single summary line"""
             return
@@ -552,6 +567,8 @@ class DescribePathTests(unittest.TestCase):
 
 
             """
+
+        # fmt: off
 
         description = openapi._describe_path(
             routing.Route(
@@ -587,17 +604,16 @@ class DescribePathTests(unittest.TestCase):
         async def f() -> None:
             pass
 
+        @openapi.describe_operation(summary='Some description')
+        async def g() -> None:
+            pass
+
         description = openapi._describe_path(
             routing.Route(
                 '/',
                 get=openapi.describe_operation(f, operation_id='get'),
-                post=typing.Annotated[
-                    f,
-                    'this is ignored',
-                    openapi.OperationAnnotation(operation_id='post'),
-                    'so is this',
-                ],
-                put=openapi.describe_operation(f),
+                post=openapi.describe_operation(f, operation_id='post'),
+                put=g,
             ),
             openapi.OpenAPIPath(),
         )
@@ -609,3 +625,100 @@ class DescribePathTests(unittest.TestCase):
 
         description.put = tests.assert_is_not_none(description.put)
         self.assertIsNone(description.put.operationId)
+        self.assertEqual('Some description', description.put.summary)
+
+    def test_omitting_operation(self) -> None:
+        async def f() -> None:
+            pass
+
+        description = openapi._describe_path(
+            routing.Route(
+                '/',
+                get=f,
+                delete=openapi.omit(f),
+                put=metadata.append(f, openapi.Omit()),
+            ),
+            openapi.OpenAPIPath(),
+        )
+        self.assertIsNotNone(description.get)
+        self.assertIsNone(description.delete)
+
+    def test_empty_description(self) -> None:
+        description = openapi._describe_path(
+            web.url('/', tornado.web.RequestHandler),
+            openapi.OpenAPIPath(),
+        )
+        self.assertTrue(description.empty)
+        self.assertDictEqual({}, description.model_dump())
+
+    def test_describing_tornado_handler(self) -> None:
+        class RequestHandler(web.RequestHandler):
+            def get(self, thing_id: uuid.UUID) -> None:
+                """Retrieve a thing"""
+
+            def put(self, thing_id: uuid.UUID) -> None:
+                """Overwrite the thing"""
+
+            @openapi.omit
+            def delete(self, thing_id: uuid.UUID) -> None:
+                """Hidden from view"""
+
+        description = openapi._describe_path(
+            web.url('/(?P<thing_id>.*)', RequestHandler), openapi.OpenAPIPath()
+        )
+        self.assertFalse(description.empty)
+
+        self.assertIsNone(description.delete)
+
+        op = tests.assert_is_not_none(description.get)
+        self.assertEqual('Retrieve a thing', op.summary)
+
+        op = tests.assert_is_not_none(description.put)
+        self.assertEqual('Overwrite the thing', op.summary)
+
+    def test_invalid_web_url(self) -> None:
+        description = openapi._describe_path(
+            web.url('/', object), openapi.OpenAPIPath()
+        )
+        self.assertTrue(description.empty)
+        self.assertDictEqual({}, description.model_dump())
+
+    def test_describe_operation_without_parameters(self) -> None:
+        with self.assertRaises(errors.InvalidDescribeOperationError):
+            openapi.describe_operation()
+
+    def test_describing_unannotated_tornado_operation(self) -> None:
+        class RequestHandler(web.RequestHandler):
+            def get(self):  # type: ignore[no-untyped-def]  # noqa: ANN202
+                pass
+
+        description = openapi._describe_path(
+            web.url('/', RequestHandler), openapi.OpenAPIPath()
+        )
+        self.assertFalse(description.empty)
+
+    def test_unexpected_metadata(self) -> None:
+        logger = util.get_logger_for(openapi._describe_path)
+        func = unittest.mock.AsyncMock()
+        setattr(func, metadata.ATTRIBUTE_NAME, True)
+        with (
+            self.assertRaises(TypeError),
+            self.assertLogs(logger, logging.ERROR) as log_context,
+        ):
+            openapi._describe_path(
+                routing.Route(r'/', get=func), openapi.OpenAPIPath()
+            )
+        for rec in log_context.records:
+            msg = rec.getMessage()
+            if 'GET' in msg and str(func) in msg:
+                break
+        else:
+            self.fail('Expected describe operation to be logged')
+
+    def test_describing_simple_parameter(self) -> None:
+        param = openapi._describe_parameter(
+            object(), **{'name': 'something', 'in': 'path'}
+        )
+        self.assertEqual('something', param.name)
+        self.assertEqual('path', param.in_)
+        self.assertEqual({}, param.schema_)

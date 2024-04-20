@@ -22,7 +22,7 @@ versus implicitly returning `None` with an empty return.
 
 """
 
-PathCoercion = typing.Callable[[str], typing.Any]
+PathCoercion = typing.Callable[[str], object]
 
 ResponseType: typing.TypeAlias = (  # - mypy doesn't support type here
     bool
@@ -105,7 +105,7 @@ class RequestHandler(web.RequestHandler):
         if self.request.method is None:
             raise web.HTTPError(500)  # pragma: nocover -- should not happen!
 
-        func = util.strip_annotation(self.implementations[self.request.method])
+        func = self.implementations[self.request.method]
         sig = inspect.signature(func, eval_str=True)
 
         try:

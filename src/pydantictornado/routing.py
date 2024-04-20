@@ -14,40 +14,58 @@ import pydantic
 import tornado.routing
 import tornado.web
 
-from pydantictornado import errors, request_handling, util
+from pydantictornado import errors, metadata, request_handling, util
 
 HTTP_METHOD_NAMES = frozenset(tornado.web.RequestHandler.SUPPORTED_METHODS)
 """Supported HTTP methods"""
 
 
-class _PathConverter(typing.Protocol):
-    """Path parameter that has been annotated with metadata
+class Converter(metadata.MetadataMixin):  # pragma: nocover
+    def __call__(self, value: str) -> object:
+        raise NotImplementedError()
 
-    This is used to simplify type checking since typing.Annotated
-    is not *really* a type though it guarantees that two properties
-    are present.
-    """
+    def clone(self) -> 'Converter':
+        raise NotImplementedError()
+
+
+class _PathConverter(Converter):
+    def __init__(
+        self,
+        converter: typing.Callable[[str], object],
+        param_info: 'ParameterAnnotation',
+    ) -> None:
+        super().__init__()
+        self.converter = converter
+        metadata.append(self, param_info)
+
+    def clone(self) -> Converter:
+        my_mds = metadata.collect(self, ParameterAnnotation)
+        return _PathConverter(self.converter, my_mds[0])
 
     def __call__(self, value: str) -> object:
-        ...
+        return self.converter(value)
 
-    @property
-    def __origin__(self) -> typing.Self:
-        ...
+    def __eq__(self, other: object) -> bool:
+        if other is self:
+            return True
+        if isinstance(other, self.__class__):
+            return (
+                _compare(self.converter, other.converter)
+                and self.metadata == other.metadata
+            )
+        return NotImplemented
 
-    @property
-    def __metadata__(self) -> tuple[object, ...]:
-        ...
 
-    def __hash__(self) -> int:
-        ...
-
-
-class _UnionPathConverter:
+class _UnionPathConverter(Converter):
     """A PathConverter that implements first-match for union types"""
 
-    def __init__(self, converters: typing.Iterable[_PathConverter]) -> None:
+    def __init__(self, converters: typing.Iterable[Converter]) -> None:
+        super().__init__()
         self.converters = list(converters)
+        metadata.append_from(self, self.converters)
+
+    def clone(self) -> Converter:
+        return _UnionPathConverter(self.converters)
 
     def __call__(self, value: str, /) -> object:
         for converter in self.converters:
@@ -63,7 +81,7 @@ class _UnionPathConverter:
             return True
         if isinstance(other, self.__class__):
             return all(
-                _compare(util.strip_annotation(x), util.strip_annotation(y))
+                (x == y)
                 for x, y in zip(self.converters, other.converters, strict=True)
             )
         return NotImplemented
@@ -71,11 +89,10 @@ class _UnionPathConverter:
     def __str__(self) -> str:
         return '{}([{}])'.format(
             self.__class__.__name__,
-            ', '.join(str(util.strip_annotation(c)) for c in self.converters),
+            ', '.join(str(c) for c in self.converters),
         )
 
 
-@functools.cache
 def _compare(a: object, b: object) -> bool:
     if a is b:
         return True
@@ -88,24 +105,18 @@ def _compare(a: object, b: object) -> bool:
     return a == b
 
 
-def _build_coercion(param: inspect.Parameter) -> _PathConverter:
-    coercion: _UnionPathConverter | _PathConverter
+def _build_coercion(param: inspect.Parameter) -> Converter:
+    coercion: Converter
     param_type, param_metadata = util.unwrap_annotation(param.annotation)
     options = typing.get_args(param_type)
     if options:
         coercion = _UnionPathConverter(
             _lookup_coercion(cls) for cls in options
         )
-        coercion = _annotate_union_parameter(coercion)
     else:
         coercion = _lookup_coercion(param.annotation)
 
-    if param_metadata:  # combine annotations from signature and coercion
-        origin, coercion_metadata = util.unwrap_annotation(coercion)
-        coercion = typing.cast(
-            _PathConverter,
-            typing.Annotated[origin, *param_metadata, *coercion_metadata],
-        )
+    metadata.append(coercion, *param_metadata)
 
     return coercion
 
@@ -159,54 +170,54 @@ class _UUID(uuid.UUID):
 
 
 def _initialize_converters(
-    m: collections.abc.MutableMapping[type, _PathConverter],
+    m: collections.abc.MutableMapping[type, Converter],
 ) -> None:
     mapping = {
-        bool: typing.Annotated[
+        bool: _PathConverter(
             util.convert_bool,
             ParameterAnnotation(schema_={'type': 'boolean'}),
-        ],
-        float: typing.Annotated[
+        ),
+        float: _PathConverter(
             float, ParameterAnnotation(schema_={'type': 'float'})
-        ],
-        int: typing.Annotated[
+        ),
+        int: _PathConverter(
             functools.partial(int, base=10),
             ParameterAnnotation(schema_={'type': 'integer'}),
-        ],
-        str: typing.Annotated[
+        ),
+        str: _PathConverter(
             lambda s: s, ParameterAnnotation(schema_={'type': 'string'})
-        ],
-        uuid.UUID: typing.Annotated[
+        ),
+        uuid.UUID: _PathConverter(
             _UUID,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'uuid'}),
-        ],
-        datetime.date: typing.Annotated[
+        ),
+        datetime.date: _PathConverter(
             util.parse_date,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'date'}),
-        ],
-        datetime.datetime: typing.Annotated[
+        ),
+        datetime.datetime: _PathConverter(
             util.parse_datetime,
             ParameterAnnotation(
                 schema_={'type': 'string', 'format': 'date-time'}
             ),
-        ],
-        ipaddress.IPv4Address: typing.Annotated[
+        ),
+        ipaddress.IPv4Address: _PathConverter(
             ipaddress.IPv4Address,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'ipv4'}),
-        ],
-        ipaddress.IPv6Address: typing.Annotated[
+        ),
+        ipaddress.IPv6Address: _PathConverter(
             ipaddress.IPv6Address,
             ParameterAnnotation(schema_={'type': 'string', 'format': 'ipv6'}),
-        ],
-        types.NoneType: typing.Annotated[
+        ),
+        types.NoneType: _PathConverter(
             lambda _: None,
             ParameterAnnotation(schema_={'type': 'null'}),
-        ],
+        ),
     }
-    m.update(mapping)  # type: ignore[arg-type]
+    m.update(mapping)
 
 
-_converters = util.ClassMapping[_PathConverter](
+_converters = util.ClassMapping[Converter](
     initialize_data=_initialize_converters
 )
 
@@ -235,7 +246,7 @@ class Route(tornado.routing.URLSpec):
         if isinstance(pattern, str):
             pattern = re.compile(pattern.removesuffix('$') + '$')
 
-        path_types: dict[str, _PathConverter] = {}
+        path_types: dict[str, Converter] = {}
         path_groups = pattern.groupindex
         if path_groups:
             target_kwargs['path_types'] = path_types
@@ -258,7 +269,7 @@ class Route(tornado.routing.URLSpec):
 def _process_path_parameters(
     impl: request_handling.RequestMethod,
     pattern: re.Pattern[str],
-    path_types: dict[str, _PathConverter],
+    path_types: collections.abc.MutableMapping[str, Converter],
 ) -> None:
     sig = inspect.signature(impl)
     for name, param in sig.parameters.items():
@@ -273,34 +284,10 @@ def _process_path_parameters(
                     raise errors.PathTypeMismatchError(pattern, name)
 
 
-def _lookup_coercion(cls: type) -> _PathConverter:
-    cls, additional_metadata = util.unwrap_annotation(cls)
+def _lookup_coercion(cls: type) -> Converter:
     try:
-        coercion = _converters[cls]
+        coercion = _converters[util.strip_annotation(cls)]
     except KeyError:
         raise errors.UnroutableParameterTypeError(cls) from None
     else:
-        return typing.cast(
-            _PathConverter,
-            typing.Annotated[
-                coercion.__origin__,
-                *coercion.__metadata__,
-                *additional_metadata,
-            ],
-        )
-
-
-def _annotate_union_parameter(coercion: _UnionPathConverter) -> _PathConverter:
-    one_of: list[dict[str, object]] = []
-    for alternative in coercion.converters:
-        one_of.extend(
-            meta.schema_
-            for meta in getattr(alternative, '__metadata__', ())
-            if isinstance(meta, ParameterAnnotation)
-        )
-    return typing.cast(
-        _PathConverter,
-        typing.Annotated[
-            coercion, ParameterAnnotation(schema_={'oneOf': one_of})
-        ],
-    )
+        return coercion.clone()
