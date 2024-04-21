@@ -446,18 +446,11 @@ def _describe_parameter(param_info: object, **defaults: object) -> Parameter:
 def _extract_extra(t: Describable) -> tuple[Describable, SchemaExtra]:
     unwrapped = t
     extra = SchemaExtra()
-
-    if isinstance(t, AnnotationType):
-        try:
-            md: list[object] = t.__metadata__  # type: ignore[attr-defined]
-            unwrapped = t.__origin__  # type: ignore[attr-defined]
-        except AttributeError:  # pragma: nocover -- being overly cautious here
-            pass
-        else:
-            for meta in md:
-                if isinstance(meta, SchemaExtra):
-                    extra.update(meta)
-
+    if util.is_annotated(t):
+        unwrapped, md = util.unwrap_annotation(t)
+        for meta in md:
+            if isinstance(meta, SchemaExtra):
+                extra.update(meta)
     return unwrapped, extra
 
 

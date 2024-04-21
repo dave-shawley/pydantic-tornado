@@ -349,19 +349,29 @@ def parse_date(value: str) -> datetime.date:
     return parse_datetime(value).date()
 
 
+class LooksAnnotated(typing.Protocol):
+    __metadata__: list[object]
+    __origin__: type
+
+
+def is_annotated(obj: object) -> typing.TypeGuard[LooksAnnotated]:
+    """Guarantee that is annotated"""
+    # NB ... typing.get_origin() returns None when given a
+    # non-type value, so we ONLY return true for annotated
+    # type values which always have __origin__ and __metadata__
+    # attributes
+    return typing.get_origin(obj) == typing.Annotated
+
+
 def strip_annotation(t: SomeType) -> SomeType:
     """Remove annotations from `t`"""
     return unwrap_annotation(t)[0]
 
 
-def unwrap_annotation(v: SomeType) -> tuple[SomeType, tuple[object, ...]]:
+def unwrap_annotation(v: T) -> tuple[T, typing.Sequence[object]]:
     """Separate the origin value and metadata if `v` is annotated"""
-    if typing.get_origin(v) == typing.Annotated:
-        # NB ... typing.get_origin() returns None when given a
-        # non-type value, so we ONLY get here for annotated type
-        # values which always have __origin__ and __metadata__
-        # attributes
-        return v.__origin__, v.__metadata__  # type: ignore[attr-defined]
+    if is_annotated(v):
+        return typing.cast(T, v.__origin__), v.__metadata__
     return v, ()
 
 
