@@ -1,0 +1,3082 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Dave Shawley">
+      
+      
+      
+        <link rel="prev" href="../">
+      
+      
+        <link rel="next" href="../../adr/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.18">
+    
+    
+      
+        <title>Programming interface - Pydantic Tornado</title>
+      
+    
+    
+
+      <link rel="stylesheet" href="../../assets/stylesheets/main.66ac8b77.min.css">
+      
+      
+
+
+    
+<link rel="stylesheet" href="../../stylesheets/adr.css">
+
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#application-interface" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Pydantic Tornado" class="md-header__button md-logo" aria-label="Pydantic Tornado" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Pydantic Tornado
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Programming interface
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dave-shawley/pydantic-tornado" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dave-shawley/pydantic-tornado
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+    
+  
+  Pydantic-tornado
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../users-guide/examples/" class="md-tabs__link">
+          
+  
+    
+  
+  User's Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../adr/" class="md-tabs__link">
+          
+  
+    
+  
+  Explanation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../todo/" class="md-tabs__link">
+        
+  
+    
+  
+  TODO
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Pydantic Tornado" class="md-nav__button md-logo" aria-label="Pydantic Tornado" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Pydantic Tornado
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dave-shawley/pydantic-tornado" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dave-shawley/pydantic-tornado
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Pydantic-tornado
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    User's Guide
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            User's Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../users-guide/examples/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Examples
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../users-guide/writing-handlers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing handlers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../users-guide/injections/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Injecting information
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Reference
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Programming interface
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Programming interface
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#application-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Application interface
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Application interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.routing.Route" class="md-nav__link">
+    <span class="md-ellipsis">
+      Route
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.RequestHandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      RequestHandler
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Useful utilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Useful utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#types-and-type-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Types and type helpers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Types and type helpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.FieldOmittingMixin" class="md-nav__link">
+    <span class="md-ellipsis">
+      FieldOmittingMixin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.HasIsoFormat" class="md-nav__link">
+    <span class="md-ellipsis">
+      HasIsoFormat
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.Unspecified" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unspecified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.UNSPECIFIED" class="md-nav__link">
+    <span class="md-ellipsis">
+      UNSPECIFIED
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Utility methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Utility methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.apply_default" class="md-nav__link">
+    <span class="md-ellipsis">
+      apply_default
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.json_serialize_hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      json_serialize_hook
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parsing-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parsing utilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.convert_bool" class="md-nav__link">
+    <span class="md-ellipsis">
+      convert_bool
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.parse_date" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_date
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.parse_datetime" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_datetime
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.BOOLEAN_FALSE_STRINGS" class="md-nav__link">
+    <span class="md-ellipsis">
+      BOOLEAN_FALSE_STRINGS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.BOOLEAN_TRUE_STRINGS" class="md-nav__link">
+    <span class="md-ellipsis">
+      BOOLEAN_TRUE_STRINGS
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Root Errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Root Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.PydanticTornadoError" class="md-nav__link">
+    <span class="md-ellipsis">
+      PydanticTornadoError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.ConfigurationError" class="md-nav__link">
+    <span class="md-ellipsis">
+      ConfigurationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runtime errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.TypeRequiredError" class="md-nav__link">
+    <span class="md-ellipsis">
+      TypeRequiredError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.NotSerializableError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NotSerializableError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.ValueParseError" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValueParseError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#initialization-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Initialization errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Initialization errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.UnroutableParameterTypeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      UnroutableParameterTypeError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.CoroutineRequiredError" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoroutineRequiredError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.NoHttpMethodsDefinedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NoHttpMethodsDefinedError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#type-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Type annotations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Type annotations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.ReturnsNone" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReturnsNone
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.RequestMethod" class="md-nav__link">
+    <span class="md-ellipsis">
+      RequestMethod
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../adr/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Explanation
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Explanation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Decision Records
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Decision Records
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0001-record-architecture-decisions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Record architecture decisions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0002-generate-documentation-using-mkdocs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Generate documentation using mkdocs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/0003-type-annotations/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Rely on Python type annotations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../todo/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TODO
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#application-interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      Application interface
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Application interface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.routing.Route" class="md-nav__link">
+    <span class="md-ellipsis">
+      Route
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.RequestHandler" class="md-nav__link">
+    <span class="md-ellipsis">
+      RequestHandler
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Useful utilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Useful utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#types-and-type-helpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Types and type helpers
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Types and type helpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.FieldOmittingMixin" class="md-nav__link">
+    <span class="md-ellipsis">
+      FieldOmittingMixin
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.HasIsoFormat" class="md-nav__link">
+    <span class="md-ellipsis">
+      HasIsoFormat
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.Unspecified" class="md-nav__link">
+    <span class="md-ellipsis">
+      Unspecified
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.UNSPECIFIED" class="md-nav__link">
+    <span class="md-ellipsis">
+      UNSPECIFIED
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#utility-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Utility methods
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Utility methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.apply_default" class="md-nav__link">
+    <span class="md-ellipsis">
+      apply_default
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.json_serialize_hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      json_serialize_hook
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parsing-utilities" class="md-nav__link">
+    <span class="md-ellipsis">
+      Parsing utilities
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Parsing utilities">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.convert_bool" class="md-nav__link">
+    <span class="md-ellipsis">
+      convert_bool
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.parse_date" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_date
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.parse_datetime" class="md-nav__link">
+    <span class="md-ellipsis">
+      parse_datetime
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.BOOLEAN_FALSE_STRINGS" class="md-nav__link">
+    <span class="md-ellipsis">
+      BOOLEAN_FALSE_STRINGS
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.util.BOOLEAN_TRUE_STRINGS" class="md-nav__link">
+    <span class="md-ellipsis">
+      BOOLEAN_TRUE_STRINGS
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#root-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Root Errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Root Errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.PydanticTornadoError" class="md-nav__link">
+    <span class="md-ellipsis">
+      PydanticTornadoError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.ConfigurationError" class="md-nav__link">
+    <span class="md-ellipsis">
+      ConfigurationError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Runtime errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Runtime errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.TypeRequiredError" class="md-nav__link">
+    <span class="md-ellipsis">
+      TypeRequiredError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.NotSerializableError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NotSerializableError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.ValueParseError" class="md-nav__link">
+    <span class="md-ellipsis">
+      ValueParseError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#initialization-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Initialization errors
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Initialization errors">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.UnroutableParameterTypeError" class="md-nav__link">
+    <span class="md-ellipsis">
+      UnroutableParameterTypeError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.CoroutineRequiredError" class="md-nav__link">
+    <span class="md-ellipsis">
+      CoroutineRequiredError
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.errors.NoHttpMethodsDefinedError" class="md-nav__link">
+    <span class="md-ellipsis">
+      NoHttpMethodsDefinedError
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#type-annotations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Type annotations
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Type annotations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.ReturnsNone" class="md-nav__link">
+    <span class="md-ellipsis">
+      ReturnsNone
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pydantictornado.request_handling.RequestMethod" class="md-nav__link">
+    <span class="md-ellipsis">
+      RequestMethod
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+
+<h1>Programming interface</h1>
+
+
+
+
+<h2 id="application-interface">Application interface<a class="headerlink" href="#application-interface" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.routing.Route" class="doc doc-heading">
+          <code>pydantictornado.routing.Route</code>
+
+
+<a href="#pydantictornado.routing.Route" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" title="tornado.routing.URLSpec" href="https://www.tornadoweb.org/en/stable/routing.html#tornado.routing.URLSpec">URLSpec</a></code></p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/routing.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Route</span><span class="p">(</span><span class="n">tornado</span><span class="o">.</span><span class="n">routing</span><span class="o">.</span><span class="n">URLSpec</span><span class="p">):</span>
+    <span class="n">_implementations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">request_handling</span><span class="o">.</span><span class="n">RequestMethod</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pattern</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">Pattern</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">request_handling</span><span class="o">.</span><span class="n">RequestMethod</span> <span class="o">|</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_implementations</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">target_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">HTTP_METHOD_NAMES</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">is_coroutine_function</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">CoroutineRequiredError</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_implementations</span><span class="p">[</span><span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">target_kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_implementations</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">NoHttpMethodsDefinedError</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">pattern</span><span class="o">.</span><span class="n">removesuffix</span><span class="p">(</span><span class="s1">&#39;$&#39;</span><span class="p">)</span> <span class="o">+</span> <span class="s1">&#39;$&#39;</span><span class="p">)</span>
+
+        <span class="n">path_types</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Converter</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">path_groups</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">groupindex</span>
+        <span class="k">if</span> <span class="n">path_groups</span><span class="p">:</span>
+            <span class="n">target_kwargs</span><span class="p">[</span><span class="s1">&#39;path_types&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">path_types</span>
+        <span class="k">for</span> <span class="n">impl</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_implementations</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">_process_path_parameters</span><span class="p">(</span><span class="n">impl</span><span class="p">,</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">path_types</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">pattern</span><span class="p">,</span>
+            <span class="n">handler</span><span class="o">=</span><span class="n">request_handling</span><span class="o">.</span><span class="n">RequestHandler</span><span class="p">,</span>
+            <span class="n">kwargs</span><span class="o">=</span><span class="n">target_kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">implementations</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">typing</span><span class="o">.</span><span class="n">Iterator</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">request_handling</span><span class="o">.</span><span class="n">RequestMethod</span><span class="p">]]:</span>
+        <span class="k">yield from</span> <span class="bp">self</span><span class="o">.</span><span class="n">_implementations</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.request_handling.RequestHandler" class="doc doc-heading">
+          <code>pydantictornado.request_handling.RequestHandler</code>
+
+
+<a href="#pydantictornado.request_handling.RequestHandler" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" title="tornado.web.RequestHandler" href="https://www.tornadoweb.org/en/stable/web.html#tornado.web.RequestHandler">RequestHandler</a></code></p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/request_handling.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">RequestHandler</span><span class="p">(</span><span class="n">web</span><span class="o">.</span><span class="n">RequestHandler</span><span class="p">):</span>
+    <span class="n">implementations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">RequestMethod</span><span class="p">]</span>
+    <span class="n">logger</span><span class="p">:</span> <span class="n">logging</span><span class="o">.</span><span class="n">Logger</span>
+    <span class="n">__initialization_failure</span><span class="p">:</span> <span class="ne">Exception</span> <span class="o">|</span> <span class="kc">None</span>
+    <span class="n">__path_coercions</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PathCoercion</span><span class="p">]</span>
+
+    <span class="c1"># The following annotations help out type checkers. The</span>
+    <span class="c1"># methods are bound in `initialize()`.</span>
+    <span class="n">delete</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">get</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">head</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">options</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">patch</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">post</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+    <span class="n">put</span><span class="p">:</span> <span class="n">RequestMethod</span>  <span class="c1"># type: ignore[assignment] # signature mismatch</span>
+
+    <span class="k">def</span> <span class="nf">initialize</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">path_types</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">PathCoercion</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__initialization_failure</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_logger_for</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">implementations</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__path_coercions</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">defaultdict</span><span class="p">(</span>
+            <span class="n">identity_transform_factory</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">path_types</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">__path_coercions</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">path_types</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">http_method</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">SUPPORTED_METHODS</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">http_method</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+            <span class="n">func</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">util</span><span class="o">.</span><span class="n">UNSPECIFIED</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">UNSPECIFIED</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">is_coroutine_function</span><span class="p">(</span><span class="n">func</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span>
+                        <span class="s1">&#39;implementation method for </span><span class="si">%r</span><span class="s1"> is not a co-routine&#39;</span><span class="p">,</span> <span class="n">key</span>
+                    <span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">__initialization_failure</span> <span class="o">=</span> <span class="n">web</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">implementations</span><span class="p">[</span><span class="n">http_method</span><span class="p">]</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span>
+                    <span class="n">RequestMethod</span><span class="p">,</span> <span class="n">func</span>
+                <span class="p">)</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_handle_request</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">SUPPORTED_METHODS</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">implementations</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>  <span class="c1"># type: ignore[assignment]</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">initialize</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span> <span class="nf">_handle_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">path_kwargs</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">__initialization_failure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">__initialization_failure</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">web</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">(</span><span class="mi">500</span><span class="p">)</span>  <span class="c1"># pragma: nocover -- should not happen!</span>
+
+        <span class="n">func</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">implementations</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="p">]</span>
+        <span class="n">sig</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">signature</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="n">eval_str</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">kwargs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">name</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">__path_coercions</span><span class="p">[</span><span class="n">name</span><span class="p">](</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">path_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="p">}</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="s1">&#39;failed to process path parameter for </span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="n">error</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">web</span><span class="o">.</span><span class="n">HTTPError</span><span class="p">(</span><span class="mi">400</span><span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__handle_injections</span><span class="p">(</span><span class="n">sig</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">func</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">sig</span><span class="o">.</span><span class="n">return_annotation</span> <span class="o">==</span> <span class="n">ReturnsNone</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">send_response</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send_response</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="n">ResponseType</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">_args</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">:</span> <span class="nb">object</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_header</span><span class="p">(</span><span class="s1">&#39;content-type&#39;</span><span class="p">,</span> <span class="s1">&#39;application/json; charset=&quot;UTF-8&quot;&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="n">util</span><span class="o">.</span><span class="n">json_serialize_hook</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__handle_injections</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">annotations</span><span class="p">:</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">inspect</span><span class="o">.</span><span class="n">Parameter</span><span class="p">],</span>
+        <span class="n">kwargs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">get_logger_for</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">mapping</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">ClassMapping</span><span class="p">[</span><span class="nb">object</span><span class="p">](</span>
+            <span class="p">{</span>
+                <span class="n">tornado</span><span class="o">.</span><span class="n">httputil</span><span class="o">.</span><span class="n">HTTPServerRequest</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="p">,</span>
+                <span class="n">tornado</span><span class="o">.</span><span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">application</span><span class="p">,</span>
+                <span class="n">tornado</span><span class="o">.</span><span class="n">web</span><span class="o">.</span><span class="n">RequestHandler</span><span class="p">:</span> <span class="bp">self</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">annotations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;processing </span><span class="si">%s</span><span class="s1"> -&gt; annotation=</span><span class="si">%r</span><span class="s1"> origin=</span><span class="si">%r</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">,</span>
+                <span class="n">typing</span><span class="o">.</span><span class="n">get_origin</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">typing</span><span class="o">.</span><span class="n">get_origin</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">,</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+                    <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="o">.</span><span class="n">model_validate_json</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">body</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">annotation</span><span class="p">,</span> <span class="n">util</span><span class="o">.</span><span class="n">UNSPECIFIED</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">util</span><span class="o">.</span><span class="n">UNSPECIFIED</span><span class="p">:</span>
+                        <span class="n">kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+                <span class="s1">&#39;kwargs[</span><span class="si">%s</span><span class="s1">] &lt;- </span><span class="si">%r</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">util</span><span class="o">.</span><span class="n">Unspecified</span><span class="p">())</span>
+            <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div><h2 id="useful-utilities">Useful utilities<a class="headerlink" href="#useful-utilities" title="Permanent link">&para;</a></h2>
+<h3 id="types-and-type-helpers">Types and type helpers<a class="headerlink" href="#types-and-type-helpers" title="Permanent link">&para;</a></h3>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="pydantictornado.util.FieldOmittingMixin" class="doc doc-heading">
+          <code>pydantictornado.util.FieldOmittingMixin</code>
+
+
+<a href="#pydantictornado.util.FieldOmittingMixin" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" title="pydantic.BaseModel" href="https://docs.pydantic.dev/latest/api/base_model/#pydantic.BaseModel">BaseModel</a></code></p>
+
+  
+      <p>Mix this into pydantic models to omit <code>None</code> fields</p>
+<p>The fields named in <code>OMIT_IF_NONE</code> will be ignored during
+serialization if their value is <code>None</code>.</p>
+<p>The fields named in <code>OMIT_IF_EMPTY</code> will be ignored during
+serialization if their value is <em>empty</em>. This is only relevant
+for instances that implement <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sized">collections.abc.Sized</a>.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">FieldOmittingMixin</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mix this into pydantic models to omit `None` fields</span>
+
+<span class="sd">    The fields named in `OMIT_IF_NONE` will be ignored during</span>
+<span class="sd">    serialization if their value is `None`.</span>
+
+<span class="sd">    The fields named in `OMIT_IF_EMPTY` will be ignored during</span>
+<span class="sd">    serialization if their value is *empty*. This is only relevant</span>
+<span class="sd">    for instances that implement [collections.abc.Sized][].</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">OMIT_IF_EMPTY</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="n">OMIT_IF_NONE</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">ClassVar</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]]</span> <span class="o">=</span> <span class="p">()</span>
+
+    <span class="nd">@pydantic</span><span class="o">.</span><span class="n">model_serializer</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;wrap&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_omit_fields</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">handler</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span>
+            <span class="p">[</span><span class="n">typing</span><span class="o">.</span><span class="n">Self</span><span class="p">,</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">SerializationInfo</span><span class="p">],</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]</span>
+        <span class="p">],</span>
+        <span class="n">info</span><span class="p">:</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">SerializationInfo</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_fields</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">empty</span> <span class="o">=</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">collections</span><span class="o">.</span><span class="n">abc</span><span class="o">.</span><span class="n">Sized</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMIT_IF_NONE</span> <span class="ow">and</span> <span class="n">value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span>
+                <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">OMIT_IF_EMPTY</span> <span class="ow">and</span> <span class="n">empty</span>
+            <span class="p">):</span>
+                <span class="n">result</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">result</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="pydantictornado.util.HasIsoFormat" class="doc doc-heading">
+          <code>pydantictornado.util.HasIsoFormat</code>
+
+
+<a href="#pydantictornado.util.HasIsoFormat" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" title="typing.Protocol" href="https://docs.python.org/3/library/typing.html#typing.Protocol">Protocol</a></code></p>
+
+  
+      <p>Runtime checkable protocol that detects the isoformat method</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@typing</span><span class="o">.</span><span class="n">runtime_checkable</span>
+<span class="k">class</span> <span class="nc">HasIsoFormat</span><span class="p">(</span><span class="n">typing</span><span class="o">.</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Runtime checkable protocol that detects the isoformat method&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">isoformat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">spec</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="o">...</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="o">...</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="pydantictornado.util.Unspecified" class="doc doc-heading">
+          <code>pydantictornado.util.Unspecified</code>
+
+
+<a href="#pydantictornado.util.Unspecified" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+
+  
+      <p>Simple type that is never true</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">Unspecified</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simple type that is never true&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>  <span class="c1"># pragma: nocover</span>
+        <span class="c1"># note that this method may or may not be necessary based</span>
+        <span class="c1"># on the implementation ... I&#39;m leaving it here to avoid</span>
+        <span class="c1"># adding and removing it constantly</span>
+        <span class="k">return</span> <span class="kc">False</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="pydantictornado.util.UNSPECIFIED" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">UNSPECIFIED</span> <span class="o">=</span> <span class="n">Unspecified</span><span class="p">()</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#pydantictornado.util.UNSPECIFIED" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>An unspecified value when <code>None</code> is not appropriate</p>
+  </div>
+
+</div><h3 id="utility-methods">Utility methods<a class="headerlink" href="#utility-methods" title="Permanent link">&para;</a></h3>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="pydantictornado.util.apply_default" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">apply_default</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span></code>
+
+<a href="#pydantictornado.util.apply_default" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Use a default value when appropriate</p>
+<p>Note that this function will return <code>value</code> if <code>default</code>
+is <code>None</code>, <code>...</code>, or an <code>Unspecified</code> instance. This matters
+when <em>both</em> <code>value</code> and <code>default</code> are one of the "defaulted"
+values (eg, <code>None</code>, <code>...</code>, <code>UNSPECIFIED</code>).</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">apply_default</span><span class="p">(</span>
+    <span class="n">value</span><span class="p">:</span> <span class="n">T</span><span class="p">,</span>
+    <span class="n">default</span><span class="p">:</span> <span class="n">T</span> <span class="o">|</span> <span class="n">Unspecified</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">|</span> <span class="n">types</span><span class="o">.</span><span class="n">EllipsisType</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">T</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Use a default value when appropriate</span>
+
+<span class="sd">    Note that this function will return `value` if `default`</span>
+<span class="sd">    is `None`, `...`, or an `Unspecified` instance. This matters</span>
+<span class="sd">    when *both* `value` and `default` are one of the &quot;defaulted&quot;</span>
+<span class="sd">    values (eg, `None`, `...`, `UNSPECIFIED`).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">default</span> <span class="ow">in</span> <span class="p">(</span><span class="n">UNSPECIFIED</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">default</span><span class="p">,</span> <span class="n">Unspecified</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">value</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">UNSPECIFIED</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Unspecified</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">typing</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">default</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">value</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="pydantictornado.util.json_serialize_hook" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">json_serialize_hook</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span></code>
+
+<a href="#pydantictornado.util.json_serialize_hook" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Standard <code>default</code> function passed to json.dump</p>
+<p>This function is used to serialize a number of non-standard
+objects in response values.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>has attribute isoformat</td>
+<td><code>obj.isoformat()</code></td>
+</tr>
+<tr>
+<td><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv4Address">ipaddress.IPv4Address</a></td>
+<td><code>str(obj)</code></td>
+</tr>
+<tr>
+<td><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/ipaddress.html#ipaddress.IPv6Address">ipaddress.IPv6Address</a></td>
+<td><code>str(obj)</code></td>
+</tr>
+<tr>
+<td><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/uuid.html#uuid.UUID">uuid.UUID</a></td>
+<td><code>str(obj)</code></td>
+</tr>
+<tr>
+<td><a class="autorefs autorefs-external" href="https://yarl.aio-libs.org/en/stable/api/#yarl.URL">yarl.URL</a></td>
+<td><code>str(obj)</code></td>
+</tr>
+<tr>
+<td><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/datetime.html#datetime.timedelta">datetime.timedelta</a></td>
+<td>serialized as ISO-8601 duration</td>
+</tr>
+<tr>
+<td>Pydantic models</td>
+<td><code>obj.model_dump(by_alias=True)</code></td>
+</tr>
+</tbody>
+</table>
+
+          <details class="quote">
+            <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">json_serialize_hook</span><span class="p">(</span>
+    <span class="n">obj</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Standard `default` function passed to json.dump</span>
+
+<span class="sd">    This function is used to serialize a number of non-standard</span>
+<span class="sd">    objects in response values.</span>
+
+<span class="sd">    | Type                      | Description                     |</span>
+<span class="sd">    | ------------------------- | ------------------------------- |</span>
+<span class="sd">    | has attribute isoformat   | `obj.isoformat()`               |</span>
+<span class="sd">    | [ipaddress.IPv4Address][] | `str(obj)`                      |</span>
+<span class="sd">    | [ipaddress.IPv6Address][] | `str(obj)`                      |</span>
+<span class="sd">    | [uuid.UUID][]             | `str(obj)`                      |</span>
+<span class="sd">    | [yarl.URL][]              | `str(obj)`                      |</span>
+<span class="sd">    | [datetime.timedelta][]    | serialized as ISO-8601 duration |</span>
+<span class="sd">    | Pydantic models           | `obj.model_dump(by_alias=True)` |</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">HasIsoFormat</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span>
+        <span class="n">obj</span><span class="p">,</span>
+        <span class="n">ipaddress</span><span class="o">.</span><span class="n">IPv4Address</span> <span class="o">|</span> <span class="n">ipaddress</span><span class="o">.</span><span class="n">IPv6Address</span> <span class="o">|</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span> <span class="o">|</span> <span class="n">yarl</span><span class="o">.</span><span class="n">URL</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">timedelta</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_format_isoduration</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="n">total_seconds</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">by_alias</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">NotSerializableError</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div><h3 id="parsing-utilities">Parsing utilities<a class="headerlink" href="#parsing-utilities" title="Permanent link">&para;</a></h3>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="pydantictornado.util.convert_bool" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">convert_bool</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#pydantictornado.util.convert_bool" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Convert <code>value</code> into a Boolean based on configuration</p>
+<p>This function uses the <a class="autorefs autorefs-internal" href="../../users-guide/injections/#pydantictornado.util.BOOLEAN_TRUE_STRINGS">pydantictornado.util.BOOLEAN_TRUE_STRINGS</a>
+and <a class="autorefs autorefs-internal" href="../../users-guide/injections/#pydantictornado.util.BOOLEAN_FALSE_STRINGS">pydantictornado.util.BOOLEAN_FALSE_STRINGS</a> constants to
+convert <code>value</code> to a <code>bool</code>. If there is not a direct string
+match, it tries to convert <code>value</code> to an int and then casts that
+to a Boolean value.</p>
+<p>Raises <a class="autorefs autorefs-internal" href="#pydantictornado.errors.ValueParseError">pydantictornado.errors.ValueParseError</a> if it
+cannot convert <code>value</code> to a Boolean value.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">convert_bool</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert `value` into a Boolean based on configuration</span>
+
+<span class="sd">    This function uses the [pydantictornado.util.BOOLEAN_TRUE_STRINGS][]</span>
+<span class="sd">    and [pydantictornado.util.BOOLEAN_FALSE_STRINGS][] constants to</span>
+<span class="sd">    convert `value` to a `bool`. If there is not a direct string</span>
+<span class="sd">    match, it tries to convert `value` to an int and then casts that</span>
+<span class="sd">    to a Boolean value.</span>
+
+<span class="sd">    Raises [pydantictornado.errors.ValueParseError][] if it</span>
+<span class="sd">    cannot convert `value` to a Boolean value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">BOOLEAN_TRUE_STRINGS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">BOOLEAN_FALSE_STRINGS</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">int_value</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">base</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">TypeError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">ValueParseError</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">)</span> <span class="kn">from</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">int_value</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="pydantictornado.util.parse_date" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">parse_date</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#pydantictornado.util.parse_date" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Parses <code>value</code> as a datetime.datetime and discards the time</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_date</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parses `value` as a datetime.datetime and discards the time&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">parse_datetime</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="pydantictornado.util.parse_datetime" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">parse_datetime</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+<a href="#pydantictornado.util.parse_datetime" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Parse <code>value</code> into a datetime according to ISO-8601</p>
+<p>Uses <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/datetime.html#datetime.datetime.fromisoformat">datetime.datetime.fromisoformat</a> to parse <code>value</code>.
+If that fails, then the shortened date forms are used.</p>
+<p>Raises <a class="autorefs autorefs-internal" href="#pydantictornado.errors.ValueParseError">pydantictornado.errors.ValueParseError</a> if it
+cannot convert <code>value</code> to a Boolean value.</p>
+
+          <details class="quote">
+            <summary>Source code in <code>src/pydantictornado/util.py</code></summary>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">parse_datetime</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse `value` into a datetime according to ISO-8601</span>
+
+<span class="sd">    Uses [datetime.datetime.fromisoformat][] to parse `value`.</span>
+<span class="sd">    If that fails, then the shortened date forms are used.</span>
+
+<span class="sd">    Raises [pydantictornado.errors.ValueParseError][] if it</span>
+<span class="sd">    cannot convert `value` to a Boolean value.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">formats</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;%Y&#39;</span><span class="p">,</span> <span class="s1">&#39;%Y-%m&#39;</span><span class="p">,</span> <span class="s1">&#39;%Y%m&#39;</span><span class="p">]</span>
+    <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+        <span class="n">then</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">then</span><span class="o">.</span><span class="n">tzinfo</span><span class="p">:</span>
+            <span class="n">then</span> <span class="o">=</span> <span class="n">then</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">tzinfo</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">UTC</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">then</span>
+    <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="n">formats</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">suppress</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">fmt</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                <span class="n">tzinfo</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">UTC</span>
+            <span class="p">)</span>
+    <span class="k">raise</span> <span class="n">errors</span><span class="o">.</span><span class="n">ValueParseError</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+          </details>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="pydantictornado.util.BOOLEAN_FALSE_STRINGS" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">BOOLEAN_FALSE_STRINGS</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#pydantictornado.util.BOOLEAN_FALSE_STRINGS" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>String values that are parsed as <code>False</code> for boolean parameters</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="pydantictornado.util.BOOLEAN_TRUE_STRINGS" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="n">BOOLEAN_TRUE_STRINGS</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#pydantictornado.util.BOOLEAN_TRUE_STRINGS" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>String values that are parsed as <code>True</code> for boolean parameters</p>
+  </div>
+
+</div><h2 id="root-errors">Root Errors<a class="headerlink" href="#root-errors" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.PydanticTornadoError" class="doc doc-heading">
+          <code>pydantictornado.errors.PydanticTornadoError</code>
+
+
+<a href="#pydantictornado.errors.PydanticTornadoError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#Exception">Exception</a></code></p>
+
+  
+      <p>Root of all errors raised by this library</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">4</span>
+<span class="normal">5</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">PydanticTornadoError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Root of all errors raised by this library&quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.ConfigurationError" class="doc doc-heading">
+          <code>pydantictornado.errors.ConfigurationError</code>
+
+
+<a href="#pydantictornado.errors.ConfigurationError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.PydanticTornadoError" href="#pydantictornado.errors.PydanticTornadoError">PydanticTornadoError</a></code></p>
+
+  
+      <p>Root of initialization errors</p>
+<p>This category of errors occurs during route creation.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ConfigurationError</span><span class="p">(</span><span class="n">PydanticTornadoError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Root of initialization errors</span>
+
+<span class="sd">    This category of errors occurs during route creation.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  </div>
+
+
+</div><h2 id="runtime-errors">Runtime errors<a class="headerlink" href="#runtime-errors" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.TypeRequiredError" class="doc doc-heading">
+          <code>pydantictornado.errors.TypeRequiredError</code>
+
+
+<a href="#pydantictornado.errors.TypeRequiredError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.PydanticTornadoError" href="#pydantictornado.errors.PydanticTornadoError">PydanticTornadoError</a></code>, <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code></p>
+
+  
+      <p>A non-type was given where a type was required</p>
+<p>If you are seeing this, then you probably used a <a href="https://docs.python.org/3/library/typing.html#special-forms">special form</a>
+where a <a href="https://docs.python.org/3/library/typing.html#the-type-of-class-objects">type</a> is required.</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 8</span>
+<span class="normal"> 9</span>
+<span class="normal">10</span>
+<span class="normal">11</span>
+<span class="normal">12</span>
+<span class="normal">13</span>
+<span class="normal">14</span>
+<span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">TypeRequiredError</span><span class="p">(</span><span class="n">PydanticTornadoError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A non-type was given where a type was required</span>
+
+<span class="sd">    If you are seeing this, then you probably used a [special form]</span>
+<span class="sd">    where a [type] is required.</span>
+
+<span class="sd">    [special form]: https://docs.python.org/3/library/typing.html#special-forms</span>
+<span class="sd">    [type]: https://docs.python.org/3/library/typing.html#the-type-of-class-objects</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Type required - </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s1"> is a </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s1">.</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.NotSerializableError" class="doc doc-heading">
+          <code>pydantictornado.errors.NotSerializableError</code>
+
+
+<a href="#pydantictornado.errors.NotSerializableError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.PydanticTornadoError" href="#pydantictornado.errors.PydanticTornadoError">PydanticTornadoError</a></code>, <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code></p>
+
+  
+      <p>Value is not a serializable type</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NotSerializableError</span><span class="p">(</span><span class="n">PydanticTornadoError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Value is not a serializable type&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Object of type </span><span class="si">{</span><span class="n">value</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1"> &#39;</span>
+            <span class="sa">f</span><span class="s1">&#39;is not serializable&#39;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.ValueParseError" class="doc doc-heading">
+          <code>pydantictornado.errors.ValueParseError</code>
+
+
+<a href="#pydantictornado.errors.ValueParseError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.PydanticTornadoError" href="#pydantictornado.errors.PydanticTornadoError">PydanticTornadoError</a></code>, <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code></p>
+
+  
+      <p>Failed to parse a request parameter value according to its type</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">ValueParseError</span><span class="p">(</span><span class="n">PydanticTornadoError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Failed to parse a request parameter value according to its type&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">,</span> <span class="n">parser</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;failed to parse </span><span class="si">{</span><span class="n">value</span><span class="si">!r}</span><span class="s1"> as </span><span class="si">{</span><span class="n">parser</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected_type</span> <span class="o">=</span> <span class="n">parser</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">value</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div><h2 id="initialization-errors">Initialization errors<a class="headerlink" href="#initialization-errors" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.UnroutableParameterTypeError" class="doc doc-heading">
+          <code>pydantictornado.errors.UnroutableParameterTypeError</code>
+
+
+<a href="#pydantictornado.errors.UnroutableParameterTypeError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.PydanticTornadoError" href="#pydantictornado.errors.PydanticTornadoError">PydanticTornadoError</a></code>, <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#TypeError">TypeError</a></code></p>
+
+  
+      <p>Unhandled type annotation on a request method</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">UnroutableParameterTypeError</span><span class="p">(</span><span class="n">PydanticTornadoError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Unhandled type annotation on a request method&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="p">:</span> <span class="nb">type</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Type </span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1"> is not recognized by </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.CoroutineRequiredError" class="doc doc-heading">
+          <code>pydantictornado.errors.CoroutineRequiredError</code>
+
+
+<a href="#pydantictornado.errors.CoroutineRequiredError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.ConfigurationError" href="#pydantictornado.errors.ConfigurationError">ConfigurationError</a></code>, <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code></p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">CoroutineRequiredError</span><span class="p">(</span><span class="n">ConfigurationError</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">object</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">value_description</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s1">&#39;__name__&#39;</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">value_description</span><span class="si">!r}</span><span class="s1"> is a </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">}</span><span class="s1">, expected a coroutine&#39;</span>
+        <span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="pydantictornado.errors.NoHttpMethodsDefinedError" class="doc doc-heading">
+          <code>pydantictornado.errors.NoHttpMethodsDefinedError</code>
+
+
+<a href="#pydantictornado.errors.NoHttpMethodsDefinedError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="pydantictornado.errors.ConfigurationError" href="#pydantictornado.errors.ConfigurationError">ConfigurationError</a></code></p>
+
+  
+      <p>Route does not have a handler defined</p>
+
+            <details class="quote">
+              <summary>Source code in <code>src/pydantictornado/errors.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">NoHttpMethodsDefinedError</span><span class="p">(</span><span class="n">ConfigurationError</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Route does not have a handler defined&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="s1">&#39;At least one HTTP method implementation is required&#39;</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div><h2 id="type-annotations">Type annotations<a class="headerlink" href="#type-annotations" title="Permanent link">&para;</a></h2>
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="pydantictornado.request_handling.ReturnsNone" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">request_handling</span><span class="o">.</span><span class="n">ReturnsNone</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Annotated</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;ReturnsNone&#39;</span><span class="p">]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#pydantictornado.request_handling.ReturnsNone" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+  
+      <p>Explicitly mark functions that return <code>None</code> as a value</p>
+<p>This is used to distinguish between explicitly returning <code>None</code>
+versus implicitly returning <code>None</code> with an empty return.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h3 id="pydantictornado.request_handling.RequestMethod" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">pydantictornado</span><span class="o">.</span><span class="n">request_handling</span><span class="o">.</span><span class="n">RequestMethod</span> <span class="o">=</span> <span class="n">typing</span><span class="o">.</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">typing</span><span class="o">.</span><span class="n">Awaitable</span><span class="p">[</span><span class="n">ResponseType</span><span class="p">]]</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-module-attribute"><code>module-attribute</code></small>
+  </span>
+
+<a href="#pydantictornado.request_handling.RequestMethod" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+  <div class="doc doc-contents first">
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Reference">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Reference
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../../adr/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture decisions">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Architecture decisions
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.footer", "navigation.indexes", "navigation.instant", "navigation.tabs", "search.suggest"], "search": "../../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.3220b9d7.min.js"></script>
+      
+        <script src="../../search/main.js"></script>
+      
+    
+  </body>
+</html>
