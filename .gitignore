@@ -1,0 +1,8 @@
+.*
+/build
+/dist
+
+!/.cursorrules
+!/.github
+!/.gitignore
+!/.pre-commit-config.yaml

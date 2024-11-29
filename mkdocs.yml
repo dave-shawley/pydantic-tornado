@@ -1,0 +1,45 @@
+site_name: "Pydantic Tornado"
+site_author: "Dave Shawley"
+repo_url: "https://githib.com/dave-shawley/pydantic-tornado"
+repo_name: "dave-shawley/pydantic-tornado"
+use_directory_urls: false
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  anchors: warn
+
+theme:
+  name: material
+  features:
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - toc.follow
+    - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Toggle palette
+    - scheme: default
+      media: "(prefers-color-scheme: light)"
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      media: "(prefers-color-scheme: dark)"
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+nav:
+  - index.md
+  - changelog.md
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+      toc_depth: 3

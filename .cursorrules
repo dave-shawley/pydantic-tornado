@@ -1,0 +1,17 @@
+when editing python files, use the following cursor rules:
+- follow pep 8 style guide
+- use 4 spaces for indentation
+- use utf-8 encoding
+- use snake_case for variable names
+- use SCREAMING_SNAKE_CASE for constant names
+- use TitleCase for class names
+- use lowercase for function names except for unittest methods
+- prefer single quotes for strings
+- always use type annotations
+- prefer collections.abc classes over their built-in counterparts
+- prefer collections.abc classes over typing.List, typing.Dict, etc.
+- always import module names, not just aliases
+- use the following order for imports:
+  - standard library imports
+  - related third party imports
+  - local application/library specific imports
