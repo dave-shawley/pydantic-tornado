@@ -58,7 +58,7 @@ dependencies = [
   "mkdocs-material>9.5,<10",
   "mkdocstrings[python]>=0.26,<0.27",
   "mypy>=1.7,<2",
-  "pre-commit>=4,<5",
+  "pre-commit>=4,<6",
   "pytest>=8,<9",
   "ruff>=0.8,<1",
 ]
@@ -99,8 +99,6 @@ quote-style = "single"
 flake8-quotes = {inline-quotes = "single"}
 flake8-unused-arguments = {ignore-variadic-names = true}
 ignore = [
-  "ANN101",  # missing type annotation for self
-  "ANN102",  # missing type annotation for cls
   "COM812",  # missing trailing commas
   "D",  # pydocstyle
   "EM",  # raise Error('some literal') is okay IMO
