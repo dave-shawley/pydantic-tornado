@@ -1,0 +1,179 @@
+import typing
+import unittest.mock
+
+import pydantic
+import tornado.httputil
+import tornado.routing
+import tornado.web
+
+from pydantictornado import handlers, openapi
+
+
+class UndecoratedHandler(tornado.web.RequestHandler):
+    def __init__(self) -> None:
+        request = tornado.httputil.HTTPServerRequest()
+        request.connection = unittest.mock.Mock()
+        super().__init__(tornado.web.Application(), request)
+
+    async def get(self) -> None:
+        pass
+
+    async def post(self, body: pydantic.BaseModel) -> None:
+        pass
+
+
+class RequestModel(pydantic.BaseModel):
+    name: str
+
+
+class ResponseModel(pydantic.BaseModel):
+    id: int
+    name: str
+
+
+class DecoratedHandler(tornado.web.RequestHandler):
+    def __init__(self) -> None:
+        request = tornado.httputil.HTTPServerRequest()
+        request.connection = unittest.mock.Mock()
+        super().__init__(tornado.web.Application(), request)
+
+    @handlers.decorate
+    async def get(self, item_id: int) -> None:  # noqa: ARG002
+        return None
+
+    @handlers.decorate
+    async def post(self, body: RequestModel) -> ResponseModel:
+        return ResponseModel(id=42, name=body.name)
+
+
+class TestAddOperation(unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.doc = openapi.OpenAPIDocument()
+
+    def test_add_operation_without_marker(self) -> None:
+        handler = UndecoratedHandler()
+        rule = tornado.routing.URLSpec(r'/test', UndecoratedHandler)
+        self.doc.add_operation('GET', rule, handler.get)
+
+        self.assertEqual(len(self.doc.openapi_doc.paths), 0)
+
+    def test_add_operation_with_body_and_response(self) -> None:
+        handler = DecoratedHandler()
+        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
+        self.doc.add_operation('POST', rule, handler.post)
+
+        self.assertEqual(len(self.doc.openapi_doc.paths), 1)
+        path_item = self.doc.openapi_doc.paths['/test']
+        self.assertIsNotNone(path_item.post)
+        self.assertEqual(
+            path_item.post.operation_id,
+            'DecoratedHandler.post',
+        )
+        self.assertIsNotNone(path_item.post.request_body)
+        self.assertEqual(
+            path_item.post.request_body.content[
+                'application/json'
+            ].schema_.ref,
+            '#/components/schemas/RequestModel',
+        )
+
+        rsp = path_item.post.responses['200']
+        content = rsp.content['application/json']  # type: ignore[index]  # mypy#4063
+        self.assertEqual(
+            content.schema_.ref,
+            '#/components/schemas/ResponseModel',
+        )
+
+    def test_add_operation_path_params(self) -> None:
+        handler = DecoratedHandler()
+        rule = tornado.routing.URLSpec(
+            r'/test/(?P<item_id>[^/]+)', DecoratedHandler
+        )
+        self.doc.add_operation('GET', rule, handler.get)
+
+        self.assertEqual(len(self.doc.openapi_doc.paths), 1)
+        self.assertIn('/test/{item_id}', self.doc.openapi_doc.paths)
+
+    def test_add_operation_with_non_rule(self) -> None:
+        handler = DecoratedHandler()
+        rule = tornado.routing.Rule(
+            tornado.routing.HostMatches('localhost'),
+            DecoratedHandler,
+        )
+        with self.assertWarns(UserWarning):
+            self.doc.add_operation('GET', rule, handler.get)
+        self.assertEqual(len(self.doc.openapi_doc.paths), 0)
+
+
+class AddModelTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.doc = openapi.OpenAPIDocument()
+
+    def test_add_model_caches_reference(self) -> None:
+        class TestModel(pydantic.BaseModel):
+            name: str
+
+        ref1 = self.doc._add_model(TestModel)
+        ref2 = self.doc._add_model(TestModel)
+
+        self.assertEqual(ref1.ref, '#/components/schemas/TestModel')
+        self.assertIs(ref1, ref2)
+
+    def test_add_model_adds_schema(self) -> None:
+        class TestModel(pydantic.BaseModel):
+            name: str
+            count: int
+
+        ref = self.doc._add_model(TestModel)
+        self.assertEqual(ref.ref, '#/components/schemas/TestModel')
+        schema = self.doc.openapi_doc.components.schemas['TestModel']
+        props = typing.cast(dict[str, dict[str, object]], schema.properties)  # type: ignore[attr-defined]
+        self.assertEqual(props['name']['type'], 'string')
+        self.assertEqual(props['count']['type'], 'integer')
+
+    def test_add_model_with_nested_models(self) -> None:
+        class NestedModel(pydantic.BaseModel):
+            value: str
+
+        class TestModel(pydantic.BaseModel):
+            nested: NestedModel
+
+        ref = self.doc._add_model(TestModel)
+        self.assertEqual(ref.ref, '#/components/schemas/TestModel')
+        self.assertIn('TestModel', self.doc.openapi_doc.components.schemas)
+        self.assertIn('NestedModel', self.doc.openapi_doc.components.schemas)
+
+
+class TinyIdTests(unittest.TestCase):
+    def test_default_length(self) -> None:
+        tiny_id = openapi._generate_tiny_id()
+        self.assertEqual(
+            len(tiny_id), 8, 'Default length should be 8 characters'
+        )
+
+    def test_custom_length(self) -> None:
+        tiny_id = openapi._generate_tiny_id(length=16)
+        self.assertEqual(
+            len(tiny_id), 16, 'Custom length should be 16 characters'
+        )
+
+    def test_valid_characters(self) -> None:
+        tiny_id = openapi._generate_tiny_id(length=100)
+        valid_chars = set(openapi._TINY_ID_CHARS)
+        for char in tiny_id:
+            self.assertIn(
+                char,
+                valid_chars,
+                f'Character {char} should be in the valid character set',
+            )
+
+    def test_uniqueness(self) -> None:
+        ids = {openapi._generate_tiny_id() for _ in range(100)}
+        self.assertEqual(len(ids), 100, 'All generated IDs should be unique')
+
+    def test_zero_length(self) -> None:
+        tiny_id = openapi._generate_tiny_id(length=0)
+        self.assertEqual(
+            tiny_id, '', 'Zero length should result in an empty string'
+        )

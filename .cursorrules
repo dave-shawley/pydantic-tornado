@@ -10,8 +10,17 @@ when editing python files, use the following cursor rules:
 - always use type annotations
 - prefer collections.abc classes over their built-in counterparts
 - prefer collections.abc classes over typing.List, typing.Dict, etc.
-- always import module names, not just aliases
 - use the following order for imports:
   - standard library imports
   - related third party imports
   - local application/library specific imports
+- ensure that all files are formatted with ruff
+- always strip trailing whitespace from lines
+- never include whitespace in empty lines
+- ensure that all files end with a newline
+- always import module names, never import names. For example, import pydantic not from pydantic import BaseModel
+- when overriding methods, call super() at the beginning of the method
+when writing python tests, use the following cursor rules:
+- always use unittest.TestCase subclasses for tests
+- do not use pytest
+- always use unittest.mock for mocking

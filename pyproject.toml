@@ -20,7 +20,7 @@ requires-python = ">=3.12"
 version = "0.0.0"
 
 [tool.coverage.report]
-exclude_also = ["typing.Protocol", "typing.overload"]
+exclude_also = ["typing.Protocol", "typing.TYPE_CHECKING", "typing.overload"]
 show_missing = true
 
 [tool.coverage.run]
@@ -82,6 +82,13 @@ skip_version_check = true
 strict = true
 warn_unreachable = true
 
+[[tool.mypy.overrides]]
+disable_error_code = [
+  # until mypy undestands self.assertIsNone() python/mypy#4063
+  "union-attr",
+]
+module = "tests.*"
+
 [tool.pytest]
 failed-first = true
 import-mode = "importlib"
@@ -105,6 +112,7 @@ ignore = [
   "ISC",  # implicitly concat'ing strings makes format non-deterministic
   "PT",  # flake8-pytest-style
   "RSE102",  # I like raising exception instances instead of classes
+  "TD003",  # when I use TODO's, I do not include issue links
   "TRY003",  # messages in exception initializers are fine
   "TRY400",  # logging.exception is not universally preferred
   "UP040",  # mypy doesn't support type instead of typing.TypeAlias
@@ -113,4 +121,5 @@ pycodestyle = {ignore-overlong-task-comments = true}
 select = ["ALL"]
 
 [tool.ruff.lint.per-file-ignores]
+"examples/*.py" = ["INP001"]
 "tests/*.py" = ["SLF001"]
