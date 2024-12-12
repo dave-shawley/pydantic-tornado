@@ -1,9 +1,10 @@
+import typing
 import unittest
 
 import pydantic
 from tornado import web
 
-from pydantictornado import errors, handlers, models
+from pydantictornado import api, errors, handlers, models
 
 
 class Model(pydantic.BaseModel):
@@ -44,10 +45,24 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         marker = self.extract_marker(Handler.post)
         self.assertIs(marker, models.OpenAPIMethodMarker.EMPTY)
 
-    def test_named_body_parameter_detection(self) -> None:
+    def test_body_parameter_detection(self) -> None:
         class Handler(web.RequestHandler):
             @handlers.decorate
-            async def post(self, *, body: Model) -> None:
+            async def post(
+                self, *, body: typing.Annotated[Model, api.Body]
+            ) -> None:
+                pass
+
+        marker = self.extract_marker(Handler.post)
+        self.assertEqual(marker.body_param_name, 'body')
+        self.assertEqual(marker.body_param_type, Model)
+
+    def test_that_extra_annotations_are_ignored(self) -> None:
+        class Handler(web.RequestHandler):
+            @handlers.decorate
+            async def post(
+                self, *, body: typing.Annotated[Model, api.Body, 'ignored']
+            ) -> None:
                 pass
 
         marker = self.extract_marker(Handler.post)
@@ -59,7 +74,11 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
             class Handler(web.RequestHandler):
                 @handlers.decorate
-                async def post(self, *, body: Model | AnotherModel) -> None:
+                async def post(
+                    self,
+                    *,
+                    body: typing.Annotated[Model | AnotherModel, api.Body],
+                ) -> None:
                     pass
 
     def test_unannotated_body_param(self) -> None:
@@ -73,7 +92,9 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
     def test_explicit_parameters(self) -> None:
         class Handler(web.RequestHandler):
             @handlers.decorate(operation_id='create.something')
-            async def post(self, body: Model, parent_id: int) -> None:
+            async def post(
+                self, body: typing.Annotated[Model, api.Body], parent_id: int
+            ) -> None:
                 pass
 
         marker = models.OpenAPIMethodMarker.extract(Handler.post)

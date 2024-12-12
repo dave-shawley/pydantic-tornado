@@ -6,7 +6,7 @@ from collections import abc
 import pydantic
 from tornado import routing, web
 
-from pydantictornado import errors, models, openapi
+from pydantictornado import api, errors, models, openapi
 
 ModelType = typing.TypeVar('ModelType', bound=pydantic.BaseModel)
 RequestHandler = typing.TypeVar('RequestHandler', bound=web.RequestHandler)
@@ -114,31 +114,50 @@ def decorate(  # noqa: C901
             args[0],
         )
 
-    def outer(
+    def outer(  # noqa: C901
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> models.RequestMethod:
         marker = models.OpenAPIMethodMarker(extra=kwargs)
-        sig = inspect.signature(func)
-        if model_param := sig.parameters.get('body', None):
-            if not inspect.isclass(model_param.annotation):
-                raise errors.UnsupportedAnnotationError()
-            if model_param.annotation is inspect.Signature.empty:
-                raise errors.UnsupportedAnnotationError()
-            marker.body_param_name = model_param.name
-            marker.body_param_type = model_param.annotation
+        body_cls: type[pydantic.BaseModel] | None = None
 
+        sig = inspect.signature(func)
         if sig.return_annotation is not inspect.Signature.empty:
             marker.response_type = sig.return_annotation
+        for name, param in sig.parameters.items():
+            marker_found = False
+            param_type = param.annotation
+            if typing.get_origin(param_type) is typing.Annotated:
+                param_type, *rest = typing.get_args(param_type)
+                for arg in rest:
+                    match arg:
+                        case api.Body | api.Body():
+                            if not inspect.isclass(param_type):
+                                raise errors.UnsupportedAnnotationError(
+                                    type(param_type)
+                                )
+                            if param_type is inspect.Signature.empty:
+                                raise errors.UnsupportedAnnotationError()
+                            body_cls = param_type
+                            marker.body_param_name = param.name
+                            marker.body_param_type = param_type
+                            marker_found = True
+
+            if marker_found:
+                continue
+
+            if name not in ('self', 'cls'):
+                if not inspect.isclass(param_type):
+                    raise errors.UnsupportedAnnotationError(type(param_type))
+                if param_type is inspect.Signature.empty:
+                    raise errors.UnsupportedAnnotationError()
 
         @functools.wraps(func)
         async def wrapper(
             self: web.RequestHandler, *args: object, **kwargs: object
         ) -> None:
-            if model_param is not None:
+            if body_cls is not None:
                 try:
-                    body = model_param.annotation.model_validate_json(
-                        self.request.body
-                    )
+                    body = body_cls.model_validate_json(self.request.body)
                 except pydantic.ValidationError as exc:
                     raise web.HTTPError(
                         422,

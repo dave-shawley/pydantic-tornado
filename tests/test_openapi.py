@@ -6,7 +6,7 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
-from pydantictornado import handlers, openapi
+from pydantictornado import api, handlers, openapi
 
 
 class UndecoratedHandler(tornado.web.RequestHandler):
@@ -42,7 +42,9 @@ class DecoratedHandler(tornado.web.RequestHandler):
         return None
 
     @handlers.decorate
-    async def post(self, body: RequestModel) -> ResponseModel:
+    async def post(
+        self, body: typing.Annotated[RequestModel, api.Body]
+    ) -> ResponseModel:
         return ResponseModel(id=42, name=body.name)
 
 

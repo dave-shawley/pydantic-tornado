@@ -1,12 +1,13 @@
 import asyncio
 import enum
 import logging
+import typing
 from contextlib import suppress
 
 import pydantic
 from tornado import httputil, routing, web
 
-from pydantictornado import handlers
+from pydantictornado import api, handlers
 
 
 class Application(handlers.OpenAPIApplication, web.Application):
@@ -49,7 +50,9 @@ class RequestHandler(web.RequestHandler):
 
 class CreateOrderHandler(RequestHandler):
     @handlers.decorate
-    async def post(self, body: Order) -> Order:
+    async def post(
+        self, body: typing.Annotated[Order, api.Body('foo')]
+    ) -> Order:
         self.logger.info('doin the thing with %s', body)
         return body
 

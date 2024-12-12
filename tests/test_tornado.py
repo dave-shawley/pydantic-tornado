@@ -1,11 +1,12 @@
 import json
+import typing
 import unittest.mock
 
 import pydantic
 import tornado.web
 from tornado import httpclient, httpserver, testing
 
-from pydantictornado import handlers, openapi
+from pydantictornado import api, handlers, openapi
 
 
 class TestGenerateOpenAPIPath(unittest.TestCase):
@@ -134,7 +135,9 @@ class CreateItemHandler(tornado.web.RequestHandler):
     @handlers.decorate(
         operation_id='createItem', summary='Create an item', tags=['items']
     )
-    async def post(self, body: CreateItemRequest) -> Item:
+    async def post(
+        self, body: typing.Annotated[CreateItemRequest, api.Body]
+    ) -> Item:
         return Item(id=42, name=body.name)
 
 

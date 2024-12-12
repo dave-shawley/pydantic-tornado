@@ -40,20 +40,21 @@ class OpenAPIMethodMarker:
             raise TypeError(
                 f'expected OpenAPIMethodMarker, got {type(marker)}'
             )
-        if any(
-            value is not None
-            for value in (
-                marker.body_param_name,
-                marker.body_param_type,
-                marker.response_type,
-                marker.extra,
-            )
-        ):
-            return marker
-        return cls.EMPTY
+        return marker if marker else cls.EMPTY
 
     def attach(self, obj: object) -> None:
         setattr(obj, '__pydantic_tornado_method__', self)  # noqa: B010
+
+    def __bool__(self) -> bool:
+        return self is self.__class__.EMPTY or any(
+            value is not None
+            for value in (
+                self.body_param_name,
+                self.body_param_type,
+                self.response_type,
+                self.extra,
+            )
+        )
 
 
 class FrozenMethodMarker(OpenAPIMethodMarker):
