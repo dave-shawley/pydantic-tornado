@@ -70,7 +70,7 @@ class TestAddOperation(unittest.TestCase):
         self.assertIsNotNone(path_item.post)
         self.assertEqual(
             path_item.post.operation_id,
-            'DecoratedHandler.post',
+            'decorated_handler_post',
         )
         self.assertIsNotNone(path_item.post.request_body)
         self.assertEqual(

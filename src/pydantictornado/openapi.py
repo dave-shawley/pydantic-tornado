@@ -8,7 +8,7 @@ import warnings
 import pydantic
 from tornado import routing
 
-from pydantictornado import errors, models
+from pydantictornado import api, errors, models
 
 if typing.TYPE_CHECKING:
     from collections import abc
@@ -66,8 +66,7 @@ class OpenAPIDocument:
         if marker.extra:
             operation_attrs.update(copy.deepcopy(marker.extra))
         operation_attrs.setdefault(
-            'operation_id',
-            rule.target.__name__ + '.' + http_method.lower(),
+            'operation_id', api.snake_case_operation_name(http_method, rule)
         )
         operation = models.Operation(**operation_attrs)
 
