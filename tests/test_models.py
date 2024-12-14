@@ -20,3 +20,21 @@ class MarkerTests(unittest.TestCase):
             marker.response_type = None
         with self.assertRaises(AttributeError):
             marker.extra.clear()
+
+
+class OpenAPILogicTests(unittest.TestCase):
+    def test_parameter_path_property_initialization(self) -> None:
+        param = models.Parameter.model_validate(
+            {'name': 'page_size', 'in': 'query'}
+        )
+        self.assertIs(param.required, False)  # noqa: FBT003 -- positional bool param ok here
+
+        param = models.Parameter.model_validate(
+            {'name': 'order_id', 'in': 'path'}
+        )
+        self.assertIs(param.required, True)  # noqa: FBT003 -- positional bool param ok here
+
+        param = models.Parameter.model_validate(
+            {'name': 'page_size', 'in': 'query', 'required': True}
+        )
+        self.assertIs(param.required, True)  # noqa: FBT003 -- positional bool param ok here

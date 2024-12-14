@@ -179,10 +179,19 @@ class Schema(FieldOmittingMixin, pydantic.BaseModel):
 class Parameter(FieldOmittingMixin, pydantic.BaseModel):
     name: str
     in_: str = pydantic.Field(..., alias='in')
-    description: str | None
+    description: str | None = None
     required: bool
-    deprecated: bool | None
+    deprecated: bool | None = None
     schema_: Schema | Reference | None = pydantic.Field(None, alias='schema')
+
+    @pydantic.model_validator(mode='before')
+    @classmethod
+    def set_required_based_on_parameter_location(
+        cls, data: dict[str, object]
+    ) -> dict[str, object]:
+        if isinstance(data, dict) and 'required' not in data:
+            data.setdefault('required', data.get('in') == 'path')
+        return data
 
 
 class Content(FieldOmittingMixin, pydantic.BaseModel):
