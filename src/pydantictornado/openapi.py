@@ -1,7 +1,7 @@
-import copy
 import re
 import secrets
 import string
+import types
 import typing
 import warnings
 
@@ -64,7 +64,7 @@ class OpenAPIDocument:
         operation_attrs: abc.MutableMapping[str, typing.Any]
         operation_attrs = {}
         if marker.extra:
-            operation_attrs.update(copy.deepcopy(marker.extra))
+            operation_attrs.update(marker.extra)
         operation_attrs.setdefault(
             'operation_id', api.snake_case_operation_name(http_method, rule)
         )
@@ -90,6 +90,18 @@ class OpenAPIDocument:
             path_item = self.openapi_doc.paths[parsed.path]
         except KeyError:
             path_item = models.PathItem()
+            for value in marker.parameters.values():
+                schema = _generate_schema(value.annotation)
+                param = models.Parameter.model_validate(
+                    {
+                        'name': value.name,
+                        'in': 'path',
+                        'schema': schema,
+                    }
+                )
+                if value.name not in parsed.named_params:
+                    param.name = parsed.positional_params.pop(0)
+                path_item.parameters.append(param)
             self.openapi_doc.paths[parsed.path] = path_item
         setattr(path_item, http_method.lower(), operation)
 
@@ -155,3 +167,17 @@ def _generate_openapi_path(path_pattern: str) -> ParsedUrlPath:
     parsed.set_path(path_pattern)
 
     return parsed
+
+
+def _generate_schema(anno: type | None) -> models.Schema:
+    if anno is types.NoneType or anno is None:
+        return models.Schema(type='null')
+    if issubclass(anno, pydantic.BaseModel):
+        return models.Schema.model_validate(anno.model_json_schema())
+    if issubclass(anno, bool):
+        return models.Schema(type='boolean')
+    if issubclass(anno, int):
+        return models.Schema(type='number', format='int')
+    if issubclass(anno, str):
+        return models.Schema(type='string')
+    raise RuntimeError(f'Unsupported type: {anno}')

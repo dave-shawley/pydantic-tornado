@@ -45,6 +45,16 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         marker = self.extract_marker(Handler.post)
         self.assertIs(marker, models.OpenAPIMethodMarker.EMPTY)
 
+    def test_path_parameters(self) -> None:
+        class Handler(web.RequestHandler):
+            @handlers.decorate
+            async def get(self, _parent_id: int, name: str) -> Model:
+                return Model(name=name)
+
+        marker = self.extract_marker(Handler.get)
+        self.assertIs(marker.parameters['_parent_id'].annotation, int)
+        self.assertIs(marker.parameters['name'].annotation, str)
+
     def test_body_parameter_detection(self) -> None:
         class Handler(web.RequestHandler):
             @handlers.decorate
@@ -81,6 +91,13 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 ) -> None:
                     pass
 
+        with self.assertRaises(errors.UnsupportedAnnotationError):
+
+            class AnotherHandler(web.RequestHandler):
+                @handlers.decorate
+                async def post(self, arg: int | str) -> None:
+                    pass
+
     def test_unannotated_body_param(self) -> None:
         with self.assertRaises(errors.UnsupportedAnnotationError):
 
@@ -113,3 +130,19 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
         marker = models.OpenAPIMethodMarker.extract(Handler.post)
         self.assertIsNone(marker.response_type)
+
+    def test_body_custom_openapi(self) -> None:
+        class Handler(web.RequestHandler):
+            @handlers.decorate
+            async def post(
+                self,
+                body: typing.Annotated[
+                    Model, api.Body(description='Describes the new model')
+                ],
+            ) -> None:
+                pass
+
+        marker = models.OpenAPIMethodMarker.extract(Handler.post)
+        self.assertEqual(
+            marker.extra['description'], 'Describes the new model'
+        )

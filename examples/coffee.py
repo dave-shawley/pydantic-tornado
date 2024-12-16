@@ -59,7 +59,7 @@ class CreateOrderHandler(RequestHandler):
 
 class OrderHandler(RequestHandler):
     @handlers.decorate
-    async def get(self, order_id: str) -> Order:
+    async def get(self, order_id: int) -> Order:
         self.logger.info('fetching %r', order_id)
         return Order(drink=DrinkType.LATTE, size=DrinkSize.TALL)
 

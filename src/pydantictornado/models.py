@@ -7,6 +7,9 @@ import pydantic
 
 from pydantictornado import errors
 
+if typing.TYPE_CHECKING:
+    import inspect
+
 RequestBodyParam = typing.TypeVar('RequestBodyParam', bound=pydantic.BaseModel)
 ResponseModel = typing.TypeVar('ResponseModel', bound=pydantic.BaseModel)
 RequestMethod = typing.Callable[..., typing.Awaitable[None] | None]
@@ -28,7 +31,11 @@ class OpenAPIMethodMarker:
         self.body_param_name = body_param_name
         self.body_param_type = body_param_type
         self.response_type = response_type
-        self.extra = None if not extra else copy.deepcopy(extra)
+        self.parameters: dict[str, inspect.Parameter] = {}
+        self.extra: dict[str, object | str | int | bool | None | list[str]]
+        self.extra = {}
+        if extra:
+            self.extra.update(copy.deepcopy(extra))
 
     @classmethod
     def extract(cls, obj: object) -> 'OpenAPIMethodMarker':
@@ -46,13 +53,17 @@ class OpenAPIMethodMarker:
         setattr(obj, '__pydantic_tornado_method__', self)  # noqa: B010
 
     def __bool__(self) -> bool:
-        return self is self.__class__.EMPTY or any(
-            value is not None
-            for value in (
-                self.body_param_name,
-                self.body_param_type,
-                self.response_type,
-                self.extra,
+        return (
+            self is self.__class__.EMPTY
+            or bool(self.parameters)
+            or bool(self.extra)
+            or any(
+                value is not None
+                for value in (
+                    self.body_param_name,
+                    self.body_param_type,
+                    self.response_type,
+                )
             )
         )
 
@@ -63,6 +74,7 @@ class FrozenMethodMarker(OpenAPIMethodMarker):
             'body_param_name',
             'body_param_type',
             'extra',
+            'parameters',
             'response_type',
         ):
             object.__setattr__(self, attr, None)
@@ -158,17 +170,13 @@ class Reference(FieldOmittingMixin, pydantic.BaseModel):
     ref: str = pydantic.Field(..., serialization_alias='$ref')
 
 
-SchemaTypeString = enum.StrEnum(
-    'SchemaTypeString',
-    [
-        'array',
-        'boolean',
-        'null',
-        'number',
-        'object',
-        'string',
-    ],
-)
+class SchemaTypeString(enum.StrEnum):
+    ARRAY = 'array'
+    BOOLEAN = 'boolean'
+    NULL = 'null'
+    NUMBER = 'number'
+    OBJECT = 'object'
+    STRING = 'string'
 
 
 class Schema(FieldOmittingMixin, pydantic.BaseModel):
@@ -176,22 +184,61 @@ class Schema(FieldOmittingMixin, pydantic.BaseModel):
     type: SchemaTypeString | abc.Sequence[SchemaTypeString]
 
 
+class ParameterLocation(enum.StrEnum):
+    COOKIE = 'cookie'
+    HEADER = 'header'
+    QUERY = 'query'
+    PATH = 'path'
+
+
+class ParameterStyle(enum.StrEnum):
+    DEEP_OBJECT = 'deepObject'
+    FORM = 'form'
+    LABEL = 'label'
+    MATRIX = 'matrix'
+    PIPE_DELIMITED = 'pipeDelimited'
+    SIMPLE = 'simple'
+    SPACE_DELIMITED = 'spaceDelimited'
+
+
 class Parameter(FieldOmittingMixin, pydantic.BaseModel):
     name: str
-    in_: str = pydantic.Field(..., alias='in')
+    in_: ParameterLocation = pydantic.Field(..., alias='in')
     description: str | None = None
     required: bool
-    deprecated: bool | None = None
-    schema_: Schema | Reference | None = pydantic.Field(None, alias='schema')
+    deprecated: bool = False
+    schema_: Schema | Reference = pydantic.Field(..., alias='schema')
+    style: ParameterStyle
 
     @pydantic.model_validator(mode='before')
     @classmethod
-    def set_required_based_on_parameter_location(
+    def set_defaults_based_on_parameter_location(
         cls, data: dict[str, object]
     ) -> dict[str, object]:
-        if isinstance(data, dict) and 'required' not in data:
-            data.setdefault('required', data.get('in') == 'path')
+        if isinstance(data, dict):
+            location = typing.cast(ParameterLocation, data['in'])
+            if 'required' not in data:
+                data['required'] = location == ParameterLocation.PATH
+            if 'style' not in data:
+                match location:
+                    case ParameterLocation.COOKIE:
+                        style = ParameterStyle.FORM
+                    case ParameterLocation.HEADER:
+                        style = ParameterStyle.SIMPLE
+                    case ParameterLocation.PATH:
+                        style = ParameterStyle.SIMPLE
+                    case ParameterLocation.QUERY:
+                        style = ParameterStyle.FORM
+                    case _ as unreachable:  # pragma: nocover
+                        typing.assert_never(unreachable)
+                data['style'] = style
         return data
+
+    @pydantic.model_validator(mode='after')
+    def verify(self) -> typing.Self:
+        if self.in_ == ParameterLocation.PATH and not self.required:
+            raise ValueError('path parameters must be required')
+        return self
 
 
 class Content(FieldOmittingMixin, pydantic.BaseModel):
@@ -254,8 +301,8 @@ class PathItem(FieldOmittingMixin, pydantic.BaseModel):
     head: Operation | None = None
     patch: Operation | None = None
     trace: Operation | None = None
-    servers: list[Server] | None = pydantic.Field(default_factory=list[Server])
-    parameters: list[Parameter | Reference] | None = pydantic.Field(
+    servers: list[Server] = pydantic.Field(default_factory=list[Server])
+    parameters: list[Parameter | Reference] = pydantic.Field(
         default_factory=list[Parameter | Reference]
     )
 

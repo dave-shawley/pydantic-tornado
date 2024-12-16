@@ -179,3 +179,38 @@ class TinyIdTests(unittest.TestCase):
         self.assertEqual(
             tiny_id, '', 'Zero length should result in an empty string'
         )
+
+
+class SchemaGenerationTests(unittest.TestCase):
+    def test_none_type(self) -> None:
+        schema = openapi._generate_schema(None)
+        self.assertEqual(schema.type, 'null')
+
+    def test_bool_type(self) -> None:
+        schema = openapi._generate_schema(bool)
+        self.assertEqual(schema.type, 'boolean')
+
+    def test_int_type(self) -> None:
+        schema = openapi._generate_schema(int)
+        self.assertEqual(schema.type, 'number')
+        self.assertEqual(schema.format, 'int')  # type: ignore[attr-defined]
+
+    def test_str_type(self) -> None:
+        schema = openapi._generate_schema(str)
+        self.assertEqual(schema.type, 'string')
+
+    def test_pydantic_model(self) -> None:
+        class TestModel(pydantic.BaseModel):
+            name: str
+            count: int
+
+        schema = openapi._generate_schema(TestModel)
+        self.assertEqual(schema.type, 'object')
+        self.assertIn('name', schema.properties)  # type: ignore[attr-defined]
+        self.assertIn('count', schema.properties)  # type: ignore[attr-defined]
+        self.assertEqual(schema.properties['name']['type'], 'string')  # type: ignore[attr-defined]
+        self.assertEqual(schema.properties['count']['type'], 'integer')  # type: ignore[attr-defined]
+
+    def test_unsupported_type(self) -> None:
+        with self.assertRaises(RuntimeError):
+            openapi._generate_schema(object)

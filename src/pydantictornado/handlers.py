@@ -83,7 +83,7 @@ def decorate(
 ) -> models.RequestMethod: ...
 
 
-def decorate(  # noqa: C901
+def decorate(  # noqa: C901 PLR0915
     *args: typing.Callable[..., typing.Awaitable[ModelType | None]] | str,
     **kwargs: ExplicitOpenAPIDocumentation,
 ) -> (
@@ -150,6 +150,7 @@ def decorate(  # noqa: C901
                     raise errors.UnsupportedAnnotationError(type(param_type))
                 if param_type is inspect.Signature.empty:
                     raise errors.UnsupportedAnnotationError()
+                marker.parameters[name] = param
 
         @functools.wraps(func)
         async def wrapper(

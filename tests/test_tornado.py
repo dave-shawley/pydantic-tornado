@@ -1,4 +1,5 @@
 import json
+import re
 import typing
 import unittest.mock
 
@@ -156,7 +157,7 @@ class Application(handlers.OpenAPIApplication):
         super().__init__(
             [
                 tornado.web.url(r'/items', CreateItemHandler),
-                tornado.web.url(r'/items/(?P<item_id>.*)', ItemHandler),
+                tornado.web.url(r'/items/(.*)', ItemHandler),
                 tornado.web.url(r'/openapi.json', handlers.OpenDocAPIHandler),
             ],
             **settings,
@@ -202,6 +203,7 @@ class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
 
         data = json.loads(rsp.body)
         self.assertEqual(data, self.app.openapi_doc.render())
+
         self.assertEqual(
             data['paths']['/items']['post']['operationId'], 'createItem'
         )
@@ -209,6 +211,20 @@ class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
             data['paths']['/items']['post']['summary'], 'Create an item'
         )
         self.assertEqual(data['paths']['/items']['post']['tags'], ['items'])
+
+    async def test_openapi_unnamed_parameters(self) -> None:
+        data = self.app.openapi_doc.render()
+        patn = re.compile(r'/items/{(?P<param>.*)}')
+        found_param = False
+        for path in data['paths']:  # type: ignore[attr-defined]
+            if match := patn.match(path):
+                param_names = [
+                    param['name']
+                    for param in data['paths'][path]['parameters']  # type: ignore[index]
+                ]
+                self.assertIn(match['param'], param_names)
+                found_param = True
+        self.assertTrue(found_param)
 
     async def test_calling_with_invalid_body(self) -> None:
         rsp = await self.client.fetch(
