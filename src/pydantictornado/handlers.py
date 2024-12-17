@@ -135,8 +135,6 @@ def decorate(  # noqa: C901 PLR0915
                                 raise errors.UnsupportedAnnotationError(
                                     type(param_type)
                                 )
-                            if param_type is inspect.Signature.empty:
-                                raise errors.UnsupportedAnnotationError()
                             body_cls = param_type
                             marker.body_param_name = param.name
                             marker.body_param_type = param_type
