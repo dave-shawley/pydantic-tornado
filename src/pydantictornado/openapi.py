@@ -73,7 +73,7 @@ class OpenAPIDocument:
         if marker.body_param_type is not None:
             ref = self._add_model(marker.body_param_type)
             operation.request_body = models.RequestBody(
-                description='Request body',
+                description=marker.extra.get('description'),
                 content={'application/json': models.Content(schema=ref)},
                 required=True,
             )

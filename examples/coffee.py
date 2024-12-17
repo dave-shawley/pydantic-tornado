@@ -51,7 +51,8 @@ class RequestHandler(web.RequestHandler):
 class CreateOrderHandler(RequestHandler):
     @handlers.decorate
     async def post(
-        self, body: typing.Annotated[Order, api.Body('foo')]
+        self,
+        body: typing.Annotated[Order, api.Body(description='Order details')],
     ) -> Order:
         self.logger.info('doin the thing with %s', body)
         return body

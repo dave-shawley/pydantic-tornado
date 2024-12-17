@@ -8,8 +8,14 @@ class Marker:
 
 
 class Body(Marker):
-    def __init__(self, description: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        description: str | None = None,
+        required: bool = False,
+    ) -> None:
         self.description = description
+        self.required = required
 
 
 def snake_case_operation_name(http_method: str, rule: routing.Rule) -> str:

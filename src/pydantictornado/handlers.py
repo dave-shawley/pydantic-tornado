@@ -140,6 +140,13 @@ def decorate(  # noqa: C901 PLR0915
                             body_cls = param_type
                             marker.body_param_name = param.name
                             marker.body_param_type = param_type
+                            if isinstance(arg, api.Body):
+                                marker.extra.update(
+                                    {
+                                        'description': arg.description,
+                                        'required': arg.required,
+                                    }
+                                )
                             marker_found = True
 
             if marker_found:

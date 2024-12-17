@@ -137,7 +137,10 @@ class CreateItemHandler(tornado.web.RequestHandler):
         operation_id='createItem', summary='Create an item', tags=['items']
     )
     async def post(
-        self, body: typing.Annotated[CreateItemRequest, api.Body]
+        self,
+        body: typing.Annotated[
+            CreateItemRequest, api.Body(description='The item to create')
+        ],
     ) -> Item:
         return Item(id=42, name=body.name)
 
@@ -211,6 +214,10 @@ class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
             data['paths']['/items']['post']['summary'], 'Create an item'
         )
         self.assertEqual(data['paths']['/items']['post']['tags'], ['items'])
+        self.assertEqual(
+            data['paths']['/items']['post']['requestBody']['description'],
+            'The item to create',
+        )
 
     async def test_openapi_unnamed_parameters(self) -> None:
         data = self.app.openapi_doc.render()
