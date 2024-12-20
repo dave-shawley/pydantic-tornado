@@ -1,3 +1,4 @@
+import http.client
 import re
 import secrets
 import string
@@ -42,7 +43,7 @@ class OpenAPIDocument:
     def render(self) -> dict[str, object]:
         return self.openapi_doc.model_dump(by_alias=True)
 
-    def add_operation(
+    def add_operation(  # noqa: C901
         self,
         http_method: str,
         rule: routing.Rule,
@@ -79,8 +80,17 @@ class OpenAPIDocument:
             )
         if marker.response_type is not None:
             ref = self._add_model(marker.response_type)
-            operation.responses['200'] = models.Response(
-                description='OK',
+            status_code = marker.extra.get('default_status', 200)
+            if not isinstance(status_code, int):
+                raise TypeError(
+                    f'status_code must be an int, not {type(status_code)}'
+                )
+            try:
+                description = http.client.responses[status_code]
+            except KeyError:
+                description = f'Unknown HTTP {status_code}'
+            operation.responses[str(status_code)] = models.Response(
+                description=description,
                 content={'application/json': models.Content(schema=ref)},
             )
 

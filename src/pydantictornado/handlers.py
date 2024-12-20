@@ -40,26 +40,16 @@ class OpenDocAPIHandler(web.RequestHandler):
         self.write(self.application.openapi_doc.render())
 
 
-ExplicitOpenAPIDocumentation = (
-    str
-    | object
-    | abc.Sequence['ExplicitOpenAPIDocumentation']
-    | abc.Mapping[str, 'ExplicitOpenAPIDocumentation']
-)
-
-
-@typing.overload
-def decorate() -> (
-    typing.Callable[
-        [typing.Callable[..., typing.Awaitable[pydantic.BaseModel | None]]],
-        models.RequestMethod,
-    ]
-): ...
+class ExplicitOpenAPIDocumentation(typing.TypedDict, total=False):
+    default_status: typing.NotRequired[int]
+    operation_id: typing.NotRequired[str]
+    summary: typing.NotRequired[str]
+    tags: typing.NotRequired[list[str]]
 
 
 @typing.overload
 def decorate(
-    **kwargs: ExplicitOpenAPIDocumentation,
+    **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> typing.Callable[
     [typing.Callable[..., typing.Awaitable[pydantic.BaseModel | None]]],
     models.RequestMethod,
@@ -68,7 +58,7 @@ def decorate(
 
 @typing.overload
 def decorate(
-    some_args: str, /, **kwargs: ExplicitOpenAPIDocumentation
+    some_args: str, /, **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation]
 ) -> typing.Callable[
     [typing.Callable[..., typing.Awaitable[pydantic.BaseModel | None]]],
     models.RequestMethod,
@@ -79,13 +69,13 @@ def decorate(
 def decorate(
     func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     /,
-    **kwargs: ExplicitOpenAPIDocumentation,
+    **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> models.RequestMethod: ...
 
 
 def decorate(  # noqa: C901 PLR0915
     *args: typing.Callable[..., typing.Awaitable[ModelType | None]] | str,
-    **kwargs: ExplicitOpenAPIDocumentation,
+    **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> (
     models.RequestMethod
     | typing.Callable[
@@ -174,6 +164,8 @@ def decorate(  # noqa: C901 PLR0915
             else:
                 maybe_response = await func(self, *args, **kwargs)
 
+            if status_code := marker.extra.get('default_status'):
+                self.set_status(typing.cast(int, status_code))
             if isinstance(maybe_response, pydantic.BaseModel):
                 self.set_header('content-type', 'application/json')
                 self.write(maybe_response.model_dump_json())

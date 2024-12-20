@@ -1,3 +1,9 @@
+"""Canonical REST API example
+
+https://www.infoq.com/articles/webber-rest-workflow/
+
+"""
+
 import asyncio
 import enum
 import logging
@@ -49,7 +55,7 @@ class RequestHandler(web.RequestHandler):
 
 
 class CreateOrderHandler(RequestHandler):
-    @handlers.decorate
+    @handlers.decorate(default_status=201)
     async def post(
         self,
         body: typing.Annotated[Order, api.Body(description='Order details')],

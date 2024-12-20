@@ -1,3 +1,4 @@
+import http
 import json
 import re
 import typing
@@ -134,7 +135,10 @@ class Item(pydantic.BaseModel):
 
 class CreateItemHandler(tornado.web.RequestHandler):
     @handlers.decorate(
-        operation_id='createItem', summary='Create an item', tags=['items']
+        operation_id='createItem',
+        summary='Create an item',
+        default_status=http.HTTPStatus.CREATED,
+        tags=['items'],
     )
     async def post(
         self,
@@ -193,7 +197,7 @@ class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
             body=json.dumps({'name': 'test'}),
             headers={'content-type': 'application/json'},
         )
-        self.assertEqual(rsp.code, 200)
+        self.assertEqual(rsp.code, http.HTTPStatus.CREATED)
 
         data = json.loads(rsp.body)
         created = Item.model_validate(data)
@@ -217,6 +221,10 @@ class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             data['paths']['/items']['post']['requestBody']['description'],
             'The item to create',
+        )
+        self.assertIn(
+            str(http.HTTPStatus.CREATED),
+            data['paths']['/items']['post']['responses'],
         )
 
     async def test_openapi_unnamed_parameters(self) -> None:

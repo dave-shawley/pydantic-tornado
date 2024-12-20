@@ -6,7 +6,7 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
-from pydantictornado import api, handlers, openapi
+from pydantictornado import api, handlers, models, openapi
 
 
 class UndecoratedHandler(tornado.web.RequestHandler):
@@ -106,6 +106,27 @@ class TestAddOperation(unittest.TestCase):
         with self.assertWarns(UserWarning):
             self.doc.add_operation('GET', rule, handler.get)
         self.assertEqual(len(self.doc.openapi_doc.paths), 0)
+
+    def test_add_operation_with_invalid_default_status(self) -> None:
+        handler = DecoratedHandler()
+        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
+
+        marker = models.OpenAPIMethodMarker.extract(handler.post)
+        try:
+            marker.extra['default_status'] = 'not-a-number'
+            with self.assertRaises(TypeError):
+                self.doc.add_operation('POST', rule, handler.post)
+
+            marker.extra['default_status'] = 600
+            try:
+                self.doc.add_operation('POST', rule, handler.post)
+            except Exception:  # noqa: BLE001
+                self.fail(
+                    'add_operation should not fail with unknown status code'
+                )
+
+        finally:
+            marker.extra.pop('default_status')
 
 
 class AddModelTests(unittest.TestCase):

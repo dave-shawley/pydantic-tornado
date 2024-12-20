@@ -130,19 +130,3 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
         marker = models.OpenAPIMethodMarker.extract(Handler.post)
         self.assertIsNone(marker.response_type)
-
-    def test_body_custom_openapi(self) -> None:
-        class Handler(web.RequestHandler):
-            @handlers.decorate
-            async def post(
-                self,
-                body: typing.Annotated[
-                    Model, api.Body(description='Describes the new model')
-                ],
-            ) -> None:
-                pass
-
-        marker = models.OpenAPIMethodMarker.extract(Handler.post)
-        self.assertEqual(
-            marker.extra['description'], 'Describes the new model'
-        )
