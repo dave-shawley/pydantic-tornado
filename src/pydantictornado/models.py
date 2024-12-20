@@ -5,7 +5,7 @@ from collections import abc
 
 import pydantic
 
-from pydantictornado import errors
+from pydantictornado import api, errors
 
 if typing.TYPE_CHECKING:
     import inspect
@@ -15,27 +15,53 @@ ResponseModel = typing.TypeVar('ResponseModel', bound=pydantic.BaseModel)
 RequestMethod = typing.Callable[..., typing.Awaitable[None] | None]
 
 
+class BodyParameterInfo:
+    def __init__(
+        self,
+        *,
+        name: str,
+        type_: type[pydantic.BaseModel],
+        metadata: api.Body | None,
+    ) -> None:
+        self.name = name
+        self.type = type_
+        self.metadata = api.Body() if metadata is None else metadata
+
+
 class OpenAPIMethodMarker:
     EMPTY: 'OpenAPIMethodMarker'
 
     def __init__(
         self,
         *,
-        body_param_name: str | None = None,
-        body_param_type: type[pydantic.BaseModel] | None = None,
         response_type: type[pydantic.BaseModel] | None = None,
         extra: abc.Mapping[str, object | str | int | bool | None | list[str]]
         | None = None,
     ) -> None:
         super().__init__()
-        self.body_param_name = body_param_name
-        self.body_param_type = body_param_type
+        self._body_parameter_info: BodyParameterInfo | None = None
         self.response_type = response_type
         self.parameters: dict[str, inspect.Parameter] = {}
         self.extra: dict[str, object | str | int | bool | None | list[str]]
         self.extra = {}
         if extra:
             self.extra.update(copy.deepcopy(extra))
+
+    @property
+    def request_body(self) -> BodyParameterInfo | None:
+        return self._body_parameter_info
+
+    def set_request_body(
+        self,
+        name: str,
+        type_: type[pydantic.BaseModel],
+        metadata: api.Body | None,
+    ) -> None:
+        self._body_parameter_info = BodyParameterInfo(
+            name=name,
+            type_=type_,
+            metadata=metadata if metadata else api.Body(),
+        )
 
     @classmethod
     def extract(cls, obj: object) -> 'OpenAPIMethodMarker':
@@ -57,14 +83,7 @@ class OpenAPIMethodMarker:
             self is self.__class__.EMPTY
             or bool(self.parameters)
             or bool(self.extra)
-            or any(
-                value is not None
-                for value in (
-                    self.body_param_name,
-                    self.body_param_type,
-                    self.response_type,
-                )
-            )
+            or self._body_parameter_info is not None
         )
 
 

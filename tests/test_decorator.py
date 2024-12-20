@@ -64,8 +64,8 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 pass
 
         marker = self.extract_marker(Handler.post)
-        self.assertEqual(marker.body_param_name, 'body')
-        self.assertEqual(marker.body_param_type, Model)
+        self.assertEqual(marker.request_body.name, 'body')
+        self.assertEqual(marker.request_body.type, Model)
 
     def test_that_extra_annotations_are_ignored(self) -> None:
         class Handler(web.RequestHandler):
@@ -76,8 +76,20 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 pass
 
         marker = self.extract_marker(Handler.post)
-        self.assertEqual(marker.body_param_name, 'body')
-        self.assertEqual(marker.body_param_type, Model)
+        self.assertEqual(marker.request_body.name, 'body')
+        self.assertEqual(marker.request_body.type, Model)
+
+    def test_unsupported_body_parameter(self) -> None:
+        with self.assertRaises(errors.UnsupportedAnnotationError):
+
+            class Handler(web.RequestHandler):
+                @handlers.decorate
+                async def post(
+                    self,
+                    *,
+                    body: typing.Annotated[str, api.Body],
+                ) -> None:
+                    pass
 
     def test_unsupported_union_parameter(self) -> None:
         with self.assertRaises(errors.UnsupportedAnnotationError):

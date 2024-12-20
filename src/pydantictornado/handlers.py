@@ -73,7 +73,7 @@ def decorate(
 ) -> models.RequestMethod: ...
 
 
-def decorate(  # noqa: C901 PLR0915
+def decorate(  # noqa: C901
     *args: typing.Callable[..., typing.Awaitable[ModelType | None]] | str,
     **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> (
@@ -114,7 +114,6 @@ def decorate(  # noqa: C901 PLR0915
         if sig.return_annotation is not inspect.Signature.empty:
             marker.response_type = sig.return_annotation
         for name, param in sig.parameters.items():
-            marker_found = False
             param_type = param.annotation
             if typing.get_origin(param_type) is typing.Annotated:
                 param_type, *rest = typing.get_args(param_type)
@@ -125,19 +124,18 @@ def decorate(  # noqa: C901 PLR0915
                                 raise errors.UnsupportedAnnotationError(
                                     type(param_type)
                                 )
-                            body_cls = param_type
-                            marker.body_param_name = param.name
-                            marker.body_param_type = param_type
-                            if isinstance(arg, api.Body):
-                                marker.extra.update(
-                                    {
-                                        'description': arg.description,
-                                        'required': arg.required,
-                                    }
+                            if not issubclass(param_type, pydantic.BaseModel):
+                                raise errors.UnsupportedAnnotationError(
+                                    type(param_type)
                                 )
-                            marker_found = True
+                            body_cls = param_type
+                            marker.set_request_body(
+                                param.name,
+                                param_type,
+                                arg if isinstance(arg, api.Body) else None,
+                            )
 
-            if marker_found:
+            if marker.request_body:
                 continue
 
             if name not in ('self', 'cls'):
