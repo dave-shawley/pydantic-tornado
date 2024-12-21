@@ -6,8 +6,8 @@ import unittest.mock
 
 import pydantic
 import tornado.web
-from tornado import httpclient, httpserver, testing
 
+import tests
 from pydantictornado import api, handlers, openapi
 
 
@@ -171,24 +171,10 @@ class Application(handlers.OpenAPIApplication):
         )
 
 
-class TestOpenAPIApplication(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self) -> None:
-        await super().asyncSetUp()
-        self.server_sock, self.server_port = testing.bind_unused_port(
-            reuse_port=True, address='127.0.0.1'
-        )
-        self.app = Application()
-        self.server = httpserver.HTTPServer(self.app)
-        self.server.add_sockets([self.server_sock])
-        self.client = httpclient.AsyncHTTPClient(force_instance=True)
-
-    async def asyncTearDown(self) -> None:
-        self.server.stop()
-        await self.server.close_all_connections()
-        await super().asyncTearDown()
-
-    def url(self, path: str) -> str:
-        return f'http://127.0.0.1:{self.server_port}/' + path.removeprefix('/')
+class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
+    @staticmethod
+    def create_app() -> Application:
+        return Application()
 
     async def test_item_creation(self) -> None:
         rsp = await self.client.fetch(
