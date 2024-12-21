@@ -21,7 +21,7 @@ class Application(handlers.OpenAPIApplication, web.Application):
         routes: list[routing.Rule] = [
             routing.URLSpec('/orders', CreateOrderHandler),
             routing.URLSpec('/orders/(?P<order_id>.*)', OrderHandler),
-            routing.URLSpec('/openapi.json', handlers.OpenDocAPIHandler),
+            routing.URLSpec('/openapi.json', handlers.OpenAPISpecHandler),
         ]
         super().__init__(routes, **kwargs)
 

@@ -33,7 +33,7 @@ class OpenAPIApplication(web.Application):
         super().__init__(rules, **settings)  # type: ignore[arg-type]
 
 
-class OpenDocAPIHandler(web.RequestHandler):
+class OpenAPISpecHandler(web.RequestHandler):
     application: OpenAPIApplication
 
     def get(self) -> None:

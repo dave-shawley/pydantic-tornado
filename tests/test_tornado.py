@@ -165,7 +165,7 @@ class Application(handlers.OpenAPIApplication):
             [
                 tornado.web.url(r'/items', CreateItemHandler),
                 tornado.web.url(r'/items/(.*)', ItemHandler),
-                tornado.web.url(r'/openapi.json', handlers.OpenDocAPIHandler),
+                tornado.web.url(r'/openapi.json', handlers.OpenAPISpecHandler),
             ],
             **settings,
         )
