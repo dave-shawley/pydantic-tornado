@@ -20,11 +20,21 @@ class Application(handlers.OpenAPIApplication, web.Application):
     def __init__(self, **kwargs: object) -> None:
         routes: list[routing.Rule] = [
             routing.URLSpec('/docs', handlers.OpenAPIDocHandler),
-            routing.URLSpec('/orders', CreateOrderHandler),
-            routing.URLSpec('/orders/(?P<order_id>.*)', OrderHandler),
+            routing.URLSpec(
+                '/orders', CreateOrderHandler, name='create_order'
+            ),
+            routing.URLSpec(
+                '/orders/(?P<order_id>.*)', OrderHandler, name='order_handler'
+            ),
             routing.URLSpec('/openapi.json', handlers.OpenAPISpecHandler),
         ]
         super().__init__(routes, **kwargs)
+
+        order_management = self.openapi_doc.add_tag(
+            'Order Management', 'Operations related to order management'
+        )
+        self.tag_operation('create_order', 'POST', order_management)
+        self.tag_operation('order_handler', 'GET', order_management)
 
 
 class DrinkType(enum.StrEnum):

@@ -9,7 +9,7 @@ import pydantic
 import tornado.web
 
 import tests
-from pydantictornado import api, handlers, openapi
+from pydantictornado import api, handlers, models, openapi
 
 
 class TestGenerateOpenAPIPath(unittest.TestCase):
@@ -261,6 +261,43 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
         self.assertEqual(
             str(context.exception), 'rule non_existing_handler not found'
         )
+
+    async def test_tag_operation(self) -> None:
+        self.app.openapi_doc.add_tag('tag1')
+        self.app.openapi_doc.add_tag('tag2')
+        self.app.tag_operation('createItem', 'POST', 'tag1', 'tag2')
+        operation = self.app.openapi_doc.get_operation(
+            self.app.find_rule_by_name('createItem'), 'POST'
+        )
+        self.assertIn('tag1', operation.tags)
+        self.assertIn('tag2', operation.tags)
+
+    async def test_tag_operation_with_non_existing_tag(self) -> None:
+        with self.assertRaises(ValueError):
+            self.app.tag_operation('createItem', 'POST', 'non_existing_tag')
+
+    async def test_tag_operation_with_new_tag(self) -> None:
+        new_tag = models.Tag(name='new_tag', description='A new tag')
+        self.app.tag_operation('createItem', 'POST', new_tag)
+        operation = self.app.openapi_doc.get_operation(
+            self.app.find_rule_by_name('createItem'), 'POST'
+        )
+        self.assertIn('new_tag', operation.tags)
+
+    async def test_tag_operation_with_combination_of_tags(self) -> None:
+        self.app.openapi_doc.add_tag('tag1')
+        new_tag = models.Tag(name='new_tag', description='A new tag')
+        self.app.tag_operation('createItem', 'POST', 'tag1', new_tag)
+        operation = self.app.openapi_doc.get_operation(
+            self.app.find_rule_by_name('createItem'), 'POST'
+        )
+        self.assertIn('tag1', operation.tags)
+        self.assertIn('new_tag', operation.tags)
+
+    async def test_duplicate_tag(self) -> None:
+        self.app.openapi_doc.add_tag('tag1')
+        with self.assertRaises(ValueError):
+            self.app.openapi_doc.add_tag('tag1')
 
 
 class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):

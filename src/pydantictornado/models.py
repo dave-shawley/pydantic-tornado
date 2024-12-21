@@ -278,7 +278,7 @@ class RequestBody(FieldOmittingMixin, pydantic.BaseModel):
 
 
 class Operation(FieldOmittingMixin, pydantic.BaseModel):
-    tags: list[str] | None = pydantic.Field(default_factory=list[str])
+    tags: list[str] = pydantic.Field(default_factory=list[str])
     summary: str | None = None
     description: str | None = None
     external_docs: ExternalDocumentation | None = pydantic.Field(

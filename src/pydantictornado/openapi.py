@@ -115,6 +115,82 @@ class OpenAPIDocument:
             self.openapi_doc.paths[parsed.path] = path_item
         setattr(path_item, http_method.lower(), operation)
 
+    def add_tag(
+        self,
+        name: str,
+        description: str | None = None,
+    ) -> models.Tag:
+        """Add a tag to the document.
+
+        :raises ValueError: if a tag with the same name exists
+
+        """
+        if name in {tag.name for tag in self.openapi_doc.tags}:
+            raise ValueError(f'Tag {name} already exists')
+        new_tag = models.Tag(name=name, description=description)
+        self.openapi_doc.tags.append(new_tag)
+        return new_tag
+
+    def get_operation(
+        self, rule: routing.Rule, http_method: str
+    ) -> models.Operation:
+        if not isinstance(rule, routing.URLSpec):
+            warnings.warn(
+                f'{rule.__class__.__name__} rules are not supported',
+                UserWarning,
+                stacklevel=2,
+            )
+            raise TypeError(
+                f'get_operation() expected Rule, got {rule.__class__.__name__}'
+            )
+
+        working = rule.regex.pattern.removesuffix('$')
+        parsed = _generate_openapi_path(working)
+        path_item = self.openapi_doc.paths.get(parsed.path)
+
+        if path_item is None:
+            raise ValueError(
+                f'No path item found for {http_method} {parsed.path}'
+            )
+
+        method = getattr(path_item, http_method.lower(), None)
+        if method is None:
+            raise ValueError(
+                f'{http_method} method not defined on {parsed.path}'
+            )
+
+        return typing.cast(models.Operation, method)
+
+    def tag_operation(
+        self, rule: routing.Rule, http_method: str, *tags: models.Tag | str
+    ) -> None:
+        """Tag an operation.
+
+        This method will add `Tag` instances from the `tags` argument
+        to the document. If a `str` is passed, it will search for the
+        tag in the document. If the tag is not found, raises a
+        `ValueError`.
+
+        :raises ValueError: if a tag string is not found
+        :seealso: `add_tag`
+
+        """
+        all_tags = {t.name: t for t in self.openapi_doc.tags}
+        operation = self.get_operation(rule, http_method)
+        for tag in tags:
+            tag_name = tag if isinstance(tag, str) else tag.name
+            try:
+                tag_instance = all_tags[tag_name]
+            except KeyError:
+                if isinstance(tag, models.Tag):
+                    self.openapi_doc.tags.append(tag)
+                    all_tags[tag_name] = tag
+                    tag_instance = tag
+                else:
+                    raise ValueError(f'Tag {tag_name} not found') from None  # noqa: TRY004
+
+            operation.tags.append(tag_instance.name)
+
     def _add_model(self, model: type[pydantic.BaseModel]) -> models.Reference:
         try:
             ref = self.__model_map[model]

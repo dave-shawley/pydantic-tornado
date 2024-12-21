@@ -235,3 +235,26 @@ class SchemaGenerationTests(unittest.TestCase):
     def test_unsupported_type(self) -> None:
         with self.assertRaises(RuntimeError):
             openapi._generate_schema(object)
+
+
+class GetOperationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.doc = openapi.OpenAPIDocument()
+
+    def test_get_operation_on_unsupported_type(self) -> None:
+        with self.assertRaises(TypeError), self.assertWarns(UserWarning):
+            self.doc.get_operation(object(), 'GET')  # type: ignore[arg-type]
+
+    def test_get_operation_on_nonexistent_path(self) -> None:
+        with self.assertRaises(ValueError):
+            self.doc.get_operation(
+                tornado.routing.URLSpec(r'/test', UndecoratedHandler),
+                'GET',
+            )
+
+    def test_get_operation_on_nonexistent_method(self) -> None:
+        rule = tornado.routing.URLSpec(r'/(?P<item_id>.*)', DecoratedHandler)
+        self.doc.add_operation('GET', rule, DecoratedHandler.get)
+        with self.assertRaises(ValueError):
+            self.doc.get_operation(rule, 'POST')

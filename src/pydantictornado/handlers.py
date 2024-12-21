@@ -33,6 +33,21 @@ class OpenAPIApplication(web.Application):
                     self.openapi_doc.add_operation(name.upper(), rule, value)
         super().__init__(rules, **settings)  # type: ignore[arg-type]
 
+    def tag_operation(
+        self, rule_name: str, method: str, *tags: str | models.Tag
+    ) -> None:
+        """Tag an operation in the OpenAPI document.
+
+        You can pass the tag as a string if the tag already exists
+        in `openapi_doc`. Otherwise, pass a `Tag` instance to create
+        a new tag and apply it to the operation.
+
+        :raises ValueError: if the rule name is not found
+
+        """
+        rule = self.find_rule_by_name(rule_name)
+        self.openapi_doc.tag_operation(rule, method, *tags)
+
     def find_rule_by_name(self, rule_name: str) -> routing.Rule:
         """Find a named rule in the active routes.
 
