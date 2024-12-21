@@ -33,6 +33,32 @@ class OpenAPIApplication(web.Application):
                     self.openapi_doc.add_operation(name.upper(), rule, value)
         super().__init__(rules, **settings)  # type: ignore[arg-type]
 
+    def find_rule_by_name(self, rule_name: str) -> routing.Rule:
+        """Find a named rule in the active routes.
+
+        :raises ValueError: if the rule name is not found
+
+        """
+
+        def search(
+            router: routing.ReversibleRuleRouter,
+        ) -> routing.Rule | None:
+            if rule_name in router.named_rules:
+                return typing.cast(routing.Rule, router.named_rules[rule_name])
+
+            for rule in router.rules:
+                if isinstance(rule.target, routing.ReversibleRuleRouter):
+                    match = search(rule.target)
+                    if match is not None:
+                        return match
+
+            return None
+
+        rule = search(self.default_router)
+        if rule is None:
+            raise ValueError(f'rule {rule_name} not found')
+        return rule
+
 
 class OpenAPISpecHandler(web.RequestHandler):
     application: OpenAPIApplication

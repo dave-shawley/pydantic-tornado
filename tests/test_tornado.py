@@ -164,7 +164,9 @@ class Application(handlers.OpenAPIApplication):
     def __init__(self, **settings: object) -> None:
         super().__init__(
             [
-                tornado.web.url(r'/items', CreateItemHandler),
+                tornado.web.url(
+                    r'/items', CreateItemHandler, name='createItem'
+                ),
                 tornado.web.url(r'/items/(.*)', ItemHandler),
                 tornado.web.url(r'/openapi.json', handlers.OpenAPISpecHandler),
             ],
@@ -246,6 +248,19 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
 
         rsp = await self.client.fetch(self.url('/items/123'), method='DELETE')
         self.assertEqual(rsp.code, 204)
+
+    async def test_find_existing_rule_by_name(self) -> None:
+        rule = self.app.find_rule_by_name('createItem')
+        self.assertIsNotNone(rule)
+        self.assertEqual(rule.name, 'createItem')
+        self.assertIs(rule.target, CreateItemHandler)
+
+    async def test_find_non_existing_rule_by_name(self) -> None:
+        with self.assertRaises(ValueError) as context:
+            self.app.find_rule_by_name('non_existing_handler')
+        self.assertEqual(
+            str(context.exception), 'rule non_existing_handler not found'
+        )
 
 
 class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):
