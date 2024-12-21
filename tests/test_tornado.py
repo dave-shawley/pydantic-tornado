@@ -1,4 +1,5 @@
 import http
+import importlib.resources
 import json
 import re
 import typing
@@ -245,3 +246,26 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
 
         rsp = await self.client.fetch(self.url('/items/123'), method='DELETE')
         self.assertEqual(rsp.code, 204)
+
+
+class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):
+    @staticmethod
+    def create_app() -> tornado.web.Application:
+        return tornado.web.Application(
+            [
+                tornado.web.url(r'/docs', handlers.OpenAPIDocHandler),
+            ]
+        )
+
+    async def test_get_openapi_doc(self) -> None:
+        rsp = await self.client.fetch(self.url('/docs'))
+        self.assertEqual(rsp.code, 200)
+        self.assertEqual(rsp.headers['content-type'], 'text/html')
+        doc = importlib.resources.files('pydantictornado') / 'openapi.html'
+        content = doc.read_text(encoding='utf-8')
+        self.assertEqual(rsp.body.decode(), content)
+
+    async def test_cache_control_header(self) -> None:
+        rsp = await self.client.fetch(self.url('/docs'))
+        self.assertEqual(rsp.code, 200)
+        self.assertEqual(rsp.headers['Cache-Control'], 'public, max-age=3600')

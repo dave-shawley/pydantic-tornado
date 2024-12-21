@@ -1,4 +1,5 @@
 import functools
+import importlib.resources
 import inspect
 import typing
 from collections import abc
@@ -38,6 +39,26 @@ class OpenAPISpecHandler(web.RequestHandler):
 
     def get(self) -> None:
         self.write(self.application.openapi_doc.render())
+
+
+class OpenAPIDocHandler(web.RequestHandler):
+    application: OpenAPIApplication
+    _html_content: typing.ClassVar[str] = ''
+    _file_timestamp: typing.ClassVar[float] = 0.0
+
+    def get(self) -> None:
+        self.set_header('content-type', 'text/html')
+        self.set_header('cache-control', 'public, max-age=3600')
+        self.write(self.get_html_content())
+
+    @classmethod
+    def get_html_content(cls) -> str:
+        if not cls._html_content:
+            path = (
+                importlib.resources.files('pydantictornado') / 'openapi.html'
+            )
+            cls._html_content = path.read_text(encoding='utf-8')
+        return cls._html_content
 
 
 class ExplicitOpenAPIDocumentation(typing.TypedDict, total=False):

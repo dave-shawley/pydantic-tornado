@@ -19,6 +19,7 @@ from pydantictornado import api, handlers
 class Application(handlers.OpenAPIApplication, web.Application):
     def __init__(self, **kwargs: object) -> None:
         routes: list[routing.Rule] = [
+            routing.URLSpec('/docs', handlers.OpenAPIDocHandler),
             routing.URLSpec('/orders', CreateOrderHandler),
             routing.URLSpec('/orders/(?P<order_id>.*)', OrderHandler),
             routing.URLSpec('/openapi.json', handlers.OpenAPISpecHandler),
