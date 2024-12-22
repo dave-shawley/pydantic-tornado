@@ -71,7 +71,7 @@ class OpenAPIApplication(web.Application):
 
         rule = search(self.default_router)
         if rule is None:
-            raise ValueError(f'rule {rule_name} not found')
+            raise errors.RuleNotFoundError(rule_name)
         return rule
 
 

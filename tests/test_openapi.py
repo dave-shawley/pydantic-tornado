@@ -6,7 +6,7 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
-from pydantictornado import api, handlers, models, openapi
+from pydantictornado import api, errors, handlers, models, openapi
 
 
 class UndecoratedHandler(tornado.web.RequestHandler):
@@ -247,14 +247,18 @@ class GetOperationTests(unittest.TestCase):
             self.doc.get_operation(object(), 'GET')  # type: ignore[arg-type]
 
     def test_get_operation_on_nonexistent_path(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(errors.OperationNotFoundError) as context:
             self.doc.get_operation(
                 tornado.routing.URLSpec(r'/test', UndecoratedHandler),
                 'GET',
             )
+        self.assertEqual(context.exception.http_method, 'GET')
+        self.assertEqual(context.exception.path_expression, '/test')
 
     def test_get_operation_on_nonexistent_method(self) -> None:
         rule = tornado.routing.URLSpec(r'/(?P<item_id>.*)', DecoratedHandler)
         self.doc.add_operation('GET', rule, DecoratedHandler.get)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(errors.OperationNotFoundError) as context:
             self.doc.get_operation(rule, 'POST')
+        self.assertEqual(context.exception.http_method, 'POST')
+        self.assertEqual(context.exception.path_expression, '/{item_id}')

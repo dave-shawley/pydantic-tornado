@@ -9,7 +9,7 @@ import pydantic
 import tornado.web
 
 import tests
-from pydantictornado import api, handlers, models, openapi
+from pydantictornado import api, errors, handlers, models, openapi
 
 
 class TestGenerateOpenAPIPath(unittest.TestCase):
@@ -256,11 +256,9 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
         self.assertIs(rule.target, CreateItemHandler)
 
     async def test_find_non_existing_rule_by_name(self) -> None:
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(errors.RuleNotFoundError) as context:
             self.app.find_rule_by_name('non_existing_handler')
-        self.assertEqual(
-            str(context.exception), 'rule non_existing_handler not found'
-        )
+        self.assertEqual(context.exception.rule_name, 'non_existing_handler')
 
     async def test_tag_operation(self) -> None:
         self.app.openapi_doc.add_tag('tag1')
@@ -273,7 +271,7 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
         self.assertIn('tag2', operation.tags)
 
     async def test_tag_operation_with_non_existing_tag(self) -> None:
-        with self.assertRaises(ValueError):
+        with self.assertRaises(errors.TagNotFoundError):
             self.app.tag_operation('createItem', 'POST', 'non_existing_tag')
 
     async def test_tag_operation_with_new_tag(self) -> None:
@@ -296,7 +294,7 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
 
     async def test_duplicate_tag(self) -> None:
         self.app.openapi_doc.add_tag('tag1')
-        with self.assertRaises(ValueError):
+        with self.assertRaises(errors.DuplicateTagError):
             self.app.openapi_doc.add_tag('tag1')
 
 

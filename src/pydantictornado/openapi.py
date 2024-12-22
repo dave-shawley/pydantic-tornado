@@ -126,7 +126,7 @@ class OpenAPIDocument:
 
         """
         if name in {tag.name for tag in self.openapi_doc.tags}:
-            raise ValueError(f'Tag {name} already exists')
+            raise errors.DuplicateTagError(name)
         new_tag = models.Tag(name=name, description=description)
         self.openapi_doc.tags.append(new_tag)
         return new_tag
@@ -149,15 +149,11 @@ class OpenAPIDocument:
         path_item = self.openapi_doc.paths.get(parsed.path)
 
         if path_item is None:
-            raise ValueError(
-                f'No path item found for {http_method} {parsed.path}'
-            )
+            raise errors.OperationNotFoundError(parsed.path, http_method)
 
         method = getattr(path_item, http_method.lower(), None)
         if method is None:
-            raise ValueError(
-                f'{http_method} method not defined on {parsed.path}'
-            )
+            raise errors.OperationNotFoundError(parsed.path, http_method)
 
         return typing.cast(models.Operation, method)
 
@@ -187,7 +183,7 @@ class OpenAPIDocument:
                     all_tags[tag_name] = tag
                     tag_instance = tag
                 else:
-                    raise ValueError(f'Tag {tag_name} not found') from None  # noqa: TRY004
+                    raise errors.TagNotFoundError(tag_name) from None
 
             operation.tags.append(tag_instance.name)
 
