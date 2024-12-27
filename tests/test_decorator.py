@@ -1,10 +1,12 @@
 import typing
-import unittest
+import unittest.mock
 
 import pydantic
 from tornado import web
 
 from pydantictornado import api, errors, handlers, models
+
+HandlerType = typing.TypeVar('HandlerType', bound=web.RequestHandler)
 
 
 class Model(pydantic.BaseModel):
@@ -16,6 +18,19 @@ class AnotherModel(pydantic.BaseModel):
 
 
 class DecorateTests(unittest.IsolatedAsyncioTestCase):
+    @staticmethod
+    def create_handler(
+        handler_cls: type[HandlerType],
+        *,
+        body: pydantic.BaseModel | None = None,
+    ) -> HandlerType:
+        app = unittest.mock.Mock()
+        app.ui_methods = {}
+        request = unittest.mock.Mock()
+        if body is not None:
+            request.body = body.model_dump_json().encode()
+        return handler_cls(app, request)
+
     def extract_marker(self, func: object) -> models.OpenAPIMethodMarker:
         try:
             return models.OpenAPIMethodMarker.extract(func)
@@ -45,7 +60,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         marker = self.extract_marker(Handler.post)
         self.assertIs(marker, models.OpenAPIMethodMarker.EMPTY)
 
-    def test_path_parameters(self) -> None:
+    async def test_path_parameters(self) -> None:
         class Handler(web.RequestHandler):
             @handlers.decorate
             async def get(self, _parent_id: int, name: str) -> Model:
@@ -118,6 +133,14 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 async def post(self, *, body) -> None:  # type: ignore[no-untyped-def] # noqa: ANN001
                     pass
 
+    def test_wildcard_parameters(self) -> None:
+        with self.assertRaises(errors.UnsupportedParameterError):
+
+            class Handler(web.RequestHandler):
+                @handlers.decorate
+                async def post(self, **kwargs: object) -> None:
+                    pass
+
     def test_explicit_parameters(self) -> None:
         class Handler(web.RequestHandler):
             @handlers.decorate(operation_id='create.something')
@@ -142,3 +165,60 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
         marker = models.OpenAPIMethodMarker.extract(Handler.post)
         self.assertIsNone(marker.response_type)
+
+    async def test_positional_and_keyword_args(self) -> None:
+        class Handler(web.RequestHandler):
+            @handlers.decorate
+            async def put(  # noqa: PLR0913
+                self,
+                category: str,
+                parent_id: int,
+                /,
+                item_id: int,
+                *,
+                overwrite: bool,
+                content: typing.Annotated[Model, api.Body],
+                cost: float = 0.0,
+            ) -> None:
+                self.write(
+                    {
+                        'category': type(category).__name__,
+                        'content': type(content).__name__,
+                        'cost': type(cost).__name__,
+                        'parent_id': type(parent_id).__name__,
+                        'item_id': type(item_id).__name__,
+                        'overwrite': type(overwrite).__name__,
+                    }
+                )
+
+        marker = self.extract_marker(Handler.put)
+        self.assertEqual(marker.parameters['category'].annotation, str)
+        self.assertEqual(marker.parameters['cost'].annotation, float)
+        self.assertEqual(marker.parameters['parent_id'].annotation, int)
+        self.assertEqual(marker.parameters['item_id'].annotation, int)
+        self.assertEqual(marker.parameters['overwrite'].annotation, bool)
+
+        handler = self.create_handler(Handler, body=Model(name='whatever'))
+        handler.write = unittest.mock.Mock()  # type: ignore[method-assign]
+        await handler.put('items', '1', '2', overwrite='yes', cost=1.23)  # type: ignore[misc]
+        handler.write.assert_called_once_with(
+            {
+                'category': 'str',
+                'content': 'Model',
+                'cost': 'float',
+                'item_id': 'int',
+                'overwrite': 'bool',
+                'parent_id': 'int',
+            }
+        )
+
+    async def test_positional_body_parameter(self) -> None:
+        class Handler(web.RequestHandler):
+            @handlers.decorate
+            async def post(
+                self, body: typing.Annotated[Model, api.Body], item_id: int
+            ) -> None:
+                pass
+
+        handler = self.create_handler(Handler, body=Model(name='whatever'))
+        await handler.post('12')  # type: ignore[misc]

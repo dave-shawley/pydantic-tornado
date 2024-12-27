@@ -252,14 +252,24 @@ def _generate_openapi_path(path_pattern: str) -> ParsedUrlPath:
 
 
 def _generate_schema(anno: type | None) -> models.Schema:
+    if typing.get_origin(anno) is typing.Annotated:
+        anno = typing.get_args(anno)[0]
+
+    schema = {}
     if anno is types.NoneType or anno is None:
-        return models.Schema(type='null')
-    if issubclass(anno, pydantic.BaseModel):
-        return models.Schema.model_validate(anno.model_json_schema())
-    if issubclass(anno, bool):
-        return models.Schema(type='boolean')
-    if issubclass(anno, int):
-        return models.Schema(type='number', format='int')
-    if issubclass(anno, str):
-        return models.Schema(type='string')
+        schema['type'] = 'null'
+    elif issubclass(anno, pydantic.BaseModel):
+        schema.update(anno.model_json_schema())
+    elif issubclass(anno, bool):
+        schema['type'] = 'boolean'
+    elif issubclass(anno, int):
+        schema.update({'type': 'number', 'format': 'int'})
+    elif issubclass(anno, float):
+        schema['type'] = 'number'
+    elif issubclass(anno, str):
+        schema['type'] = 'string'
+
+    if schema:
+        return models.Schema.model_validate(schema)
+
     raise RuntimeError(f'Unsupported type: {anno}')

@@ -211,6 +211,10 @@ class SchemaGenerationTests(unittest.TestCase):
         schema = openapi._generate_schema(bool)
         self.assertEqual(schema.type, 'boolean')
 
+    def test_float_type(self) -> None:
+        schema = openapi._generate_schema(float)
+        self.assertEqual(schema.type, 'number')
+
     def test_int_type(self) -> None:
         schema = openapi._generate_schema(int)
         self.assertEqual(schema.type, 'number')
@@ -231,6 +235,10 @@ class SchemaGenerationTests(unittest.TestCase):
         self.assertIn('count', schema.properties)  # type: ignore[attr-defined]
         self.assertEqual(schema.properties['name']['type'], 'string')  # type: ignore[attr-defined]
         self.assertEqual(schema.properties['count']['type'], 'integer')  # type: ignore[attr-defined]
+
+    def test_annotated_type(self) -> None:
+        schema = openapi._generate_schema(typing.Annotated[str, api.Body])  # type: ignore[arg-type]
+        self.assertEqual(schema.type, 'string')
 
     def test_unsupported_type(self) -> None:
         with self.assertRaises(RuntimeError):

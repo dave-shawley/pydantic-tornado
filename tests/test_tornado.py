@@ -249,6 +249,11 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
         rsp = await self.client.fetch(self.url('/items/123'), method='DELETE')
         self.assertEqual(rsp.code, 204)
 
+        rsp = await self.client.fetch(
+            self.url('/items/not-a-number'), raise_error=False
+        )
+        self.assertEqual(rsp.code, 400)
+
     async def test_find_existing_rule_by_name(self) -> None:
         rule = self.app.find_rule_by_name('createItem')
         self.assertIsNotNone(rule)

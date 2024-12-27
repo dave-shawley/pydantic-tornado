@@ -38,4 +38,13 @@ class TagNotFoundError(Error, ValueError):
 
 
 class UnsupportedAnnotationError(Error):
-    pass
+    """Annotation is not supported by the OpenAPI decorators."""
+
+
+class UnsupportedParameterError(Error):
+    """Parameter is not supported by the OpenAPI decorators."""
+
+    def __init__(self, param_name: str, reason: str) -> None:
+        super().__init__(f'Parameter {param_name} is not supported: {reason}')
+        self.param_name = param_name
+        self.reason = reason

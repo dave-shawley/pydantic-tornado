@@ -135,7 +135,7 @@ def decorate(
 ) -> models.RequestMethod: ...
 
 
-def decorate(  # noqa: C901
+def decorate(  # noqa: C901, PLR0915
     *args: typing.Callable[..., typing.Awaitable[ModelType | None]] | str,
     **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> (
@@ -166,16 +166,22 @@ def decorate(  # noqa: C901
             args[0],
         )
 
-    def outer(  # noqa: C901
+    def outer(  # noqa: C901, PLR0912, PLR0915
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> models.RequestMethod:
         marker = models.OpenAPIMethodMarker(extra=kwargs)
         body_cls: type[pydantic.BaseModel] | None = None
+        body_param: inspect.Parameter | None = None
+
+        positional_args: list[inspect.Parameter] = []
+        keyword_args: dict[str, inspect.Parameter] = {}
 
         sig = inspect.signature(func)
         if sig.return_annotation is not inspect.Signature.empty:
             marker.response_type = sig.return_annotation
-        for name, param in sig.parameters.items():
+
+        all_params = list(sig.parameters.items())
+        for name, param in all_params[1:]:  # skip the `self` parameter
             param_type = param.annotation
             if typing.get_origin(param_type) is typing.Annotated:
                 param_type, *rest = typing.get_args(param_type)
@@ -190,6 +196,7 @@ def decorate(  # noqa: C901
                                 raise errors.UnsupportedAnnotationError(
                                     type(param_type)
                                 )
+                            body_param = param
                             body_cls = param_type
                             marker.set_request_body(
                                 param.name,
@@ -197,21 +204,49 @@ def decorate(  # noqa: C901
                                 arg if isinstance(arg, api.Body) else None,
                             )
 
-            if marker.request_body:
-                continue
+            if not inspect.isclass(param_type):
+                raise errors.UnsupportedAnnotationError(type(param_type))
+            if param_type is inspect.Signature.empty:
+                raise errors.UnsupportedAnnotationError()
 
-            if name not in ('self', 'cls'):
-                if not inspect.isclass(param_type):
-                    raise errors.UnsupportedAnnotationError(type(param_type))
-                if param_type is inspect.Signature.empty:
-                    raise errors.UnsupportedAnnotationError()
+            if param is not body_param:
                 marker.parameters[name] = param
+
+            if param.kind in (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            ):
+                positional_args.append(param)
+            elif param.kind == inspect.Parameter.KEYWORD_ONLY:
+                keyword_args[name] = param
+            else:
+                raise errors.UnsupportedParameterError(
+                    name, f'kind {param.kind} is not supported'
+                )
+
+        # At this point, positional_args is an ordered list of
+        # non-keyword parameters. If the body parameter was found,
+        # and it is not a keyword-only parameter, then, the
+        # Parameter instance will be in positional_args. We use
+        # identity comparison when creating the parameters used
+        # to call the method.
+        #
+        # keyword_args contains the keyword only parameters.
 
         @functools.wraps(func)
         async def wrapper(
-            self: web.RequestHandler, *args: object, **kwargs: object
+            self: web.RequestHandler, *args: str, **kwargs: str
         ) -> None:
+            # Method is invoked as `op(*converted_args, **converted_kwargs)`
+            # where converted_args is the ordered sequence of non-keyword-only
+            # parameters
+            converted_args: list[object] = []
+            converted_kwargs: dict[str, object] = {}
+
+            body = None
             if body_cls is not None:
+                if body_param is None:  # pragma: no cover
+                    raise RuntimeError('body_cls is set but body_param is not')
                 try:
                     body = body_cls.model_validate_json(self.request.body)
                 except pydantic.ValidationError as exc:
@@ -220,9 +255,26 @@ def decorate(  # noqa: C901
                         'failed to validate request body: %s',
                         exc.errors(),
                     ) from exc
-                maybe_response = await func(self, body, *args, **kwargs)
-            else:
-                maybe_response = await func(self, *args, **kwargs)
+                if body_param.kind == inspect.Parameter.KEYWORD_ONLY:
+                    converted_kwargs[body_param.name] = body
+
+            remaining_args = list(args)
+            for arg in positional_args:
+                if arg is body_param:
+                    converted_args.append(body)
+                else:
+                    converted_args.append(
+                        convert_parameter_value(arg, remaining_args.pop(0))
+                    )
+
+            for name, item in kwargs.items():
+                converted_kwargs[name] = convert_parameter_value(
+                    keyword_args[name], item
+                )
+
+            maybe_response = await func(
+                self, *converted_args, **converted_kwargs
+            )
 
             if status_code := marker.extra.get('default_status'):
                 self.set_status(typing.cast(int, status_code))
@@ -238,3 +290,18 @@ def decorate(  # noqa: C901
         return outer(func_provided)
 
     return outer
+
+
+def convert_parameter_value(
+    param_def: inspect.Parameter, value: str
+) -> str | int | bool | float | None:
+    try:
+        if param_def.annotation is int:
+            return int(value)
+        if param_def.annotation is bool:
+            return value.lower() in ('true', '1')
+        if param_def.annotation is float:
+            return float(value)
+    except (TypeError, ValueError):
+        raise web.HTTPError(400) from None
+    return value
