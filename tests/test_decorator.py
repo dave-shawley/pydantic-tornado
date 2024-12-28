@@ -4,7 +4,7 @@ import unittest.mock
 import pydantic
 from tornado import web
 
-from pydantictornado import api, errors, handlers, models
+from pydantictornado import api, errors
 
 HandlerType = typing.TypeVar('HandlerType', bound=web.RequestHandler)
 
@@ -31,9 +31,9 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             request.body = body.model_dump_json().encode()
         return handler_cls(app, request)
 
-    def extract_marker(self, func: object) -> models.OpenAPIMethodMarker:
+    def extract_marker(self, func: object) -> api.OpenAPIMethodMarker:
         try:
-            return models.OpenAPIMethodMarker.extract(func)
+            return api.OpenAPIMethodMarker.extract(func)
         except errors.MarkerNotFoundError:
             self.fail(f'marker not found on {func}')
         except TypeError as error:
@@ -45,24 +45,24 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 return None
 
         with self.assertRaises(TypeError):
-            handlers.decorate(Handler.get, 1)  # type: ignore[call-overload]
+            api.decorate(Handler.get, 1)  # type: ignore[call-overload]
         with self.assertRaises(TypeError):
-            handlers.decorate('param')
+            api.decorate('param')
         with self.assertRaises(TypeError):
-            handlers.decorate(print)  # type: ignore[arg-type]
+            api.decorate(print)  # type: ignore[arg-type]
 
     def test_parameterless_handler(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def post(self) -> None:
                 pass
 
         marker = self.extract_marker(Handler.post)
-        self.assertIs(marker, models.OpenAPIMethodMarker.EMPTY)
+        self.assertIs(marker, api.OpenAPIMethodMarker.EMPTY)
 
     async def test_path_parameters(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def get(self, _parent_id: int, name: str) -> Model:
                 return Model(name=name)
 
@@ -72,7 +72,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
     def test_body_parameter_detection(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def post(
                 self, *, body: typing.Annotated[Model, api.Body]
             ) -> None:
@@ -84,7 +84,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
     def test_that_extra_annotations_are_ignored(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def post(
                 self, *, body: typing.Annotated[Model, api.Body, 'ignored']
             ) -> None:
@@ -98,7 +98,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(errors.UnsupportedAnnotationError):
 
             class Handler(web.RequestHandler):
-                @handlers.decorate
+                @api.decorate
                 async def post(
                     self,
                     *,
@@ -110,7 +110,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(errors.UnsupportedAnnotationError):
 
             class Handler(web.RequestHandler):
-                @handlers.decorate
+                @api.decorate
                 async def post(
                     self,
                     *,
@@ -121,7 +121,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(errors.UnsupportedAnnotationError):
 
             class AnotherHandler(web.RequestHandler):
-                @handlers.decorate
+                @api.decorate
                 async def post(self, arg: int | str) -> None:
                     pass
 
@@ -129,7 +129,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(errors.UnsupportedAnnotationError):
 
             class Handler(web.RequestHandler):
-                @handlers.decorate
+                @api.decorate
                 async def post(self, *, body) -> None:  # type: ignore[no-untyped-def] # noqa: ANN001
                     pass
 
@@ -137,19 +137,19 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(errors.UnsupportedParameterError):
 
             class Handler(web.RequestHandler):
-                @handlers.decorate
+                @api.decorate
                 async def post(self, **kwargs: object) -> None:
                     pass
 
     def test_explicit_parameters(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate(operation_id='create.something')
+            @api.decorate(operation_id='create.something')
             async def post(
                 self, body: typing.Annotated[Model, api.Body], parent_id: int
             ) -> None:
                 pass
 
-        marker = models.OpenAPIMethodMarker.extract(Handler.post)
+        marker = api.OpenAPIMethodMarker.extract(Handler.post)
         self.assertEqual(
             marker.extra,
             {
@@ -159,16 +159,16 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
     def test_unannotated_handler(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def post(self):  # type: ignore[no-untyped-def]  # noqa: ANN202
                 pass
 
-        marker = models.OpenAPIMethodMarker.extract(Handler.post)
+        marker = api.OpenAPIMethodMarker.extract(Handler.post)
         self.assertIsNone(marker.response_type)
 
     async def test_positional_and_keyword_args(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def put(  # noqa: PLR0913
                 self,
                 category: str,
@@ -214,7 +214,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_positional_body_parameter(self) -> None:
         class Handler(web.RequestHandler):
-            @handlers.decorate
+            @api.decorate
             async def post(
                 self, body: typing.Annotated[Model, api.Body], item_id: int
             ) -> None:

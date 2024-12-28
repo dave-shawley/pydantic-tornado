@@ -47,10 +47,10 @@ class OpenAPIDocument:
         self,
         http_method: str,
         rule: routing.Rule,
-        func: models.RequestMethod,
+        func: api.RequestMethod,
     ) -> None:
         try:
-            marker = models.OpenAPIMethodMarker.extract(func)
+            marker = api.OpenAPIMethodMarker.extract(func)
         except errors.MarkerNotFoundError:
             return
 

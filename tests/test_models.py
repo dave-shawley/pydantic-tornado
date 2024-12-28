@@ -2,7 +2,7 @@ import unittest
 
 import pydantic
 
-from pydantictornado import models
+from pydantictornado import api, models
 
 
 class C:
@@ -14,10 +14,10 @@ class MarkerTests(unittest.TestCase):
         obj = C()
         setattr(obj, '__pydantic_tornado_method__', 42)  # noqa: B010
         with self.assertRaises(TypeError):
-            models.OpenAPIMethodMarker.extract(obj)
+            api.OpenAPIMethodMarker.extract(obj)
 
     def test_that_frozen_marker_is_immutable(self) -> None:
-        marker = models.FrozenMethodMarker()
+        marker = api.FrozenMethodMarker()
         with self.assertRaises(TypeError):
             marker.response_type = None
         with self.assertRaises(AttributeError):

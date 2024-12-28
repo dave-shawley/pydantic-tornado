@@ -185,7 +185,7 @@ class RequestHandler(web.RequestHandler):
 
 
 class CreateOrderHandler(RequestHandler):
-    @handlers.decorate(default_status=201, summary='Create a new order')
+    @api.decorate(default_status=201, summary='Create a new order')
     async def post(
         self,
         body: typing.Annotated[Order, api.Body(description='Order details')],
@@ -195,7 +195,7 @@ class CreateOrderHandler(RequestHandler):
 
 
 class OrderHandler(RequestHandler):
-    @handlers.decorate(summary='Retrieve order details')
+    @api.decorate(summary='Retrieve order details')
     async def get(self, order_id: int) -> ActiveOrder:
         self.logger.info('fetching %r', order_id)
         try:

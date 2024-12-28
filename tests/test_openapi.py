@@ -6,7 +6,7 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
-from pydantictornado import api, errors, handlers, models, openapi
+from pydantictornado import api, errors, openapi
 
 
 class UndecoratedHandler(tornado.web.RequestHandler):
@@ -37,11 +37,11 @@ class DecoratedHandler(tornado.web.RequestHandler):
         request.connection = unittest.mock.Mock()
         super().__init__(tornado.web.Application(), request)
 
-    @handlers.decorate
+    @api.decorate
     async def get(self, item_id: int) -> None:  # noqa: ARG002
         return None
 
-    @handlers.decorate
+    @api.decorate
     async def post(
         self, body: typing.Annotated[RequestModel, api.Body]
     ) -> ResponseModel:
@@ -111,7 +111,7 @@ class TestAddOperation(unittest.TestCase):
         handler = DecoratedHandler()
         rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
 
-        marker = models.OpenAPIMethodMarker.extract(handler.post)
+        marker = api.OpenAPIMethodMarker.extract(handler.post)
         try:
             marker.extra['default_status'] = 'not-a-number'
             with self.assertRaises(TypeError):

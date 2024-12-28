@@ -135,7 +135,7 @@ class Item(pydantic.BaseModel):
 
 
 class CreateItemHandler(tornado.web.RequestHandler):
-    @handlers.decorate(
+    @api.decorate(
         operation_id='createItem',
         summary='Create an item',
         default_status=http.HTTPStatus.CREATED,
@@ -151,11 +151,11 @@ class CreateItemHandler(tornado.web.RequestHandler):
 
 
 class ItemHandler(tornado.web.RequestHandler):
-    @handlers.decorate(tags=['items'])
+    @api.decorate(tags=['items'])
     async def delete(self, item_id: int) -> None:  # noqa: ARG002
         self.set_status(204)
 
-    @handlers.decorate(tags=['items'])
+    @api.decorate(tags=['items'])
     async def get(self, item_id: int) -> Item:
         return Item(id=item_id, name='example')
 
