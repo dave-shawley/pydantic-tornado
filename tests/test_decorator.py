@@ -31,9 +31,9 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             request.body = body.model_dump_json().encode()
         return handler_cls(app, request)
 
-    def extract_marker(self, func: object) -> api.OpenAPIMethodMarker:
+    def extract_marker(self, func: object) -> api.OpenAPIMethodInfo:
         try:
-            return api.OpenAPIMethodMarker.extract(func)
+            return api.OpenAPIMethodInfo.extract(func)
         except errors.MarkerNotFoundError:
             self.fail(f'marker not found on {func}')
         except TypeError as error:
@@ -58,7 +58,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                 pass
 
         marker = self.extract_marker(Handler.post)
-        self.assertIs(marker, api.OpenAPIMethodMarker.EMPTY)
+        self.assertIs(marker, api.OpenAPIMethodInfo.EMPTY)
 
     async def test_path_parameters(self) -> None:
         class Handler(web.RequestHandler):
@@ -149,7 +149,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             ) -> None:
                 pass
 
-        marker = api.OpenAPIMethodMarker.extract(Handler.post)
+        marker = api.OpenAPIMethodInfo.extract(Handler.post)
         self.assertEqual(
             marker.extra,
             {
@@ -163,7 +163,7 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             async def post(self):  # type: ignore[no-untyped-def]  # noqa: ANN202
                 pass
 
-        marker = api.OpenAPIMethodMarker.extract(Handler.post)
+        marker = api.OpenAPIMethodInfo.extract(Handler.post)
         self.assertIsNone(marker.response_type)
 
     async def test_positional_and_keyword_args(self) -> None:

@@ -1,21 +1,30 @@
 import copy
 import functools
 import inspect
-import re
 import typing
 from collections import abc
 
 import pydantic
-from tornado import routing, web
+from tornado import web
 
 from pydantictornado import errors
 
+__all__ = [
+    'Body',
+    'ExplicitOpenAPIDocumentation',
+    'Marker',
+    'OpenAPIMethodInfo',
+    'decorate',
+]
+
 
 class Marker:
-    pass
+    """Base class for all annotations."""
 
 
 class Body(Marker):
+    """Annotate a parameter as a request body."""
+
     def __init__(
         self,
         *,
@@ -26,16 +35,13 @@ class Body(Marker):
         self.required = required
 
 
-def snake_case_operation_name(http_method: str, rule: routing.Rule) -> str:
-    cls_name = re.sub(r'(?<!^)(?=[A-Z])', '_', rule.target.__name__).lower()
-    return f'{cls_name}_{http_method.lower()}'
-
-
 ModelType = typing.TypeVar('ModelType', bound=pydantic.BaseModel)
 RequestMethod = typing.Callable[..., typing.Awaitable[None] | None]
 
 
 class ExplicitOpenAPIDocumentation(typing.TypedDict, total=False):
+    """Typed arguments for api.decorate."""
+
     default_status: typing.NotRequired[int]
     operation_id: typing.NotRequired[str]
     summary: typing.NotRequired[str]
@@ -78,6 +84,7 @@ def decorate(  # noqa: C901, PLR0915
         RequestMethod,
     ]
 ):
+    """Expose a request handling method."""
     func_provided: (
         typing.Callable[..., typing.Awaitable[ModelType | None]] | None
     ) = None
@@ -102,7 +109,7 @@ def decorate(  # noqa: C901, PLR0915
     def outer(  # noqa: C901, PLR0912, PLR0915
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> RequestMethod:
-        marker = OpenAPIMethodMarker(extra=kwargs)
+        marker = OpenAPIMethodInfo(extra=kwargs)
         body_cls: type[pydantic.BaseModel] | None = None
         body_param: inspect.Parameter | None = None
 
@@ -196,11 +203,11 @@ def decorate(  # noqa: C901, PLR0915
                     converted_args.append(body)
                 else:
                     converted_args.append(
-                        convert_parameter_value(arg, remaining_args.pop(0))
+                        _convert_parameter_value(arg, remaining_args.pop(0))
                     )
 
             for name, item in kwargs.items():
-                converted_kwargs[name] = convert_parameter_value(
+                converted_kwargs[name] = _convert_parameter_value(
                     keyword_args[name], item
                 )
 
@@ -224,7 +231,7 @@ def decorate(  # noqa: C901, PLR0915
     return outer
 
 
-def convert_parameter_value(
+def _convert_parameter_value(
     param_def: inspect.Parameter, value: str
 ) -> str | int | bool | float | None:
     try:
@@ -239,7 +246,7 @@ def convert_parameter_value(
     return value
 
 
-class BodyParameterInfo:
+class _BodyParameterInfo:
     def __init__(
         self,
         *,
@@ -252,8 +259,20 @@ class BodyParameterInfo:
         self.metadata = Body() if metadata is None else metadata
 
 
-class OpenAPIMethodMarker:
-    EMPTY: 'OpenAPIMethodMarker'
+class OpenAPIMethodInfo:
+    """Attached to a method to provide OpenAPI documentation.
+
+    An instance of this class is attached to a method when it is
+    decorated with `api.decorate`. It contains much of the content
+    that is included in the generated OpenAPI documentation for the
+    operation.
+
+    The `extract` class method is used to identify exposed methods
+    by the inner workings of the library.
+
+    """
+
+    EMPTY: 'OpenAPIMethodInfo'
 
     def __init__(
         self,
@@ -263,7 +282,7 @@ class OpenAPIMethodMarker:
         | None = None,
     ) -> None:
         super().__init__()
-        self._body_parameter_info: BodyParameterInfo | None = None
+        self._body_parameter_info: _BodyParameterInfo | None = None
         self.response_type = response_type
         self.parameters: dict[str, inspect.Parameter] = {}
         self.extra: dict[str, object | str | int | bool | None | list[str]]
@@ -272,7 +291,7 @@ class OpenAPIMethodMarker:
             self.extra.update(copy.deepcopy(extra))
 
     @property
-    def request_body(self) -> BodyParameterInfo | None:
+    def request_body(self) -> _BodyParameterInfo | None:
         return self._body_parameter_info
 
     def set_request_body(
@@ -281,41 +300,41 @@ class OpenAPIMethodMarker:
         type_: type[pydantic.BaseModel],
         metadata: Body | None,
     ) -> None:
-        self._body_parameter_info = BodyParameterInfo(
+        self._body_parameter_info = _BodyParameterInfo(
             name=name,
             type_=type_,
             metadata=metadata if metadata else Body(),
         )
 
     @classmethod
-    def extract(cls, obj: object) -> 'OpenAPIMethodMarker':
+    def extract(cls, obj: object) -> 'OpenAPIMethodInfo':
+        """Extract the OpenAPIMethodInfo instance from request handler."""
         unspecified = object()
         marker = getattr(obj, '__pydantic_tornado_method__', unspecified)
         if marker is unspecified:
             raise errors.MarkerNotFoundError()
-        if not isinstance(marker, OpenAPIMethodMarker):
+        if not isinstance(marker, OpenAPIMethodInfo):
             raise TypeError(
                 f'expected OpenAPIMethodMarker, got {type(marker)}'
             )
-        return marker if marker else cls.EMPTY
+        return marker if not marker.is_empty() else cls.EMPTY
 
     def attach(self, obj: object) -> None:
         setattr(obj, '__pydantic_tornado_method__', self)  # noqa: B010
 
-    def __bool__(self) -> bool:
+    def is_empty(self) -> bool:
+        """Does this instance contain information?"""
         return (
-            self is self.__class__.EMPTY
-            or bool(self.parameters)
-            or bool(self.extra)
-            or self._body_parameter_info is not None
+            not bool(self.parameters)
+            and not bool(self.extra)
+            and self._body_parameter_info is None
         )
 
 
-class FrozenMethodMarker(OpenAPIMethodMarker):
+class _FrozenMethodInfo(OpenAPIMethodInfo):
     def __init__(self) -> None:
         for attr in (
-            'body_param_name',
-            'body_param_type',
+            '_body_parameter_info',
             'extra',
             'parameters',
             'response_type',
@@ -326,4 +345,4 @@ class FrozenMethodMarker(OpenAPIMethodMarker):
         raise TypeError('frozen method marker is immutable')
 
 
-OpenAPIMethodMarker.EMPTY = FrozenMethodMarker()
+OpenAPIMethodInfo.EMPTY = _FrozenMethodInfo()
