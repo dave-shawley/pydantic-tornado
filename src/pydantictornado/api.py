@@ -14,7 +14,7 @@ __all__ = [
     'ExplicitOpenAPIDocumentation',
     'Marker',
     'OpenAPIMethodInfo',
-    'decorate',
+    'expose_operation',
 ]
 
 
@@ -49,7 +49,7 @@ class ExplicitOpenAPIDocumentation(typing.TypedDict, total=False):
 
 
 @typing.overload
-def decorate(
+def expose_operation(
     **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> typing.Callable[
     [typing.Callable[..., typing.Awaitable[pydantic.BaseModel | None]]],
@@ -58,7 +58,7 @@ def decorate(
 
 
 @typing.overload
-def decorate(
+def expose_operation(
     some_args: str, /, **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation]
 ) -> typing.Callable[
     [typing.Callable[..., typing.Awaitable[pydantic.BaseModel | None]]],
@@ -67,14 +67,14 @@ def decorate(
 
 
 @typing.overload
-def decorate(
+def expose_operation(
     func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     /,
     **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> RequestMethod: ...
 
 
-def decorate(  # noqa: C901, PLR0915
+def expose_operation(  # noqa: C901, PLR0915
     *args: typing.Callable[..., typing.Awaitable[ModelType | None]] | str,
     **kwargs: typing.Unpack[ExplicitOpenAPIDocumentation],
 ) -> (

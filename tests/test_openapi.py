@@ -37,11 +37,11 @@ class DecoratedHandler(tornado.web.RequestHandler):
         request.connection = unittest.mock.Mock()
         super().__init__(tornado.web.Application(), request)
 
-    @api.decorate
+    @api.expose_operation
     async def get(self, item_id: int) -> None:  # noqa: ARG002
         return None
 
-    @api.decorate
+    @api.expose_operation
     async def post(
         self, body: typing.Annotated[RequestModel, api.Body]
     ) -> ResponseModel:
