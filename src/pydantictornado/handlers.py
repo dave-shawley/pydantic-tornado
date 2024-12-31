@@ -3,6 +3,7 @@ import inspect
 import typing
 from collections import abc
 
+import pydantic
 from tornado import routing, web
 
 from pydantictornado import errors, models, openapi
@@ -10,20 +11,18 @@ from pydantictornado import errors, models, openapi
 
 class OpenAPIApplication(web.Application):
     def __init__(
-        self, handlers: abc.Sequence[routing.Rule], **settings: object
+        self, handlers: list[routing.Rule], **settings: object
     ) -> None:
         self.openapi_doc = openapi.OpenAPIDocument()
-        rules = list(handlers)
-        for rule in rules:
-            for name, value in inspect.getmembers(
-                rule.target, inspect.iscoroutinefunction
-            ):
-                if (
-                    issubclass(rule.target, web.RequestHandler)
-                    and name.upper() in rule.target.SUPPORTED_METHODS
-                ):
-                    self.openapi_doc.add_operation(name.upper(), rule, value)
-        super().__init__(rules, **settings)  # type: ignore[arg-type]
+        self._process_rules(handlers)
+        super().__init__(handlers, **settings)  # type: ignore[arg-type]
+        self.error_models: dict[int, type[pydantic.BaseModel]] = {}
+
+    def add_handlers(
+        self, host_pattern: str, host_handlers: list[typing.Any]
+    ) -> None:
+        self._process_rules(host_handlers)
+        super().add_handlers(host_pattern, host_handlers)
 
     def tag_operation(
         self, rule_name: str, method: str, *tags: str | models.Tag
@@ -39,6 +38,19 @@ class OpenAPIApplication(web.Application):
         """
         rule = self.find_rule_by_name(rule_name)
         self.openapi_doc.tag_operation(rule, method, *tags)
+
+    def register_error_model(
+        self,
+        status_code: int,
+        error_model: type[pydantic.BaseModel],
+        *,
+        description: str | None = None,
+    ) -> None:
+        """Register a model as the default response for a HTTP status code."""
+        self.error_models[status_code] = error_model
+        self.openapi_doc.set_default_error_model(
+            status_code, error_model, description=description
+        )
 
     def find_rule_by_name(self, rule_name: str) -> routing.Rule:
         """Find a named rule in the active routes.
@@ -65,6 +77,17 @@ class OpenAPIApplication(web.Application):
         if rule is None:
             raise errors.RuleNotFoundError(rule_name)
         return rule
+
+    def _process_rules(self, rules: abc.Sequence[object]) -> None:
+        for rule in (r for r in rules if isinstance(r, routing.Rule)):
+            for name, value in inspect.getmembers(
+                rule.target, inspect.iscoroutinefunction
+            ):
+                if (
+                    issubclass(rule.target, web.RequestHandler)
+                    and name.upper() in rule.target.SUPPORTED_METHODS
+                ):
+                    self.openapi_doc.add_operation(name.upper(), rule, value)
 
 
 class OpenAPISpecHandler(web.RequestHandler):

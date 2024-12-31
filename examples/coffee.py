@@ -19,6 +19,16 @@ from tornado import httputil, routing, web
 from pydantictornado import api, handlers
 
 
+class ErrorResponse(pydantic.BaseModel):
+    status: int
+    title: str
+
+
+class NotFoundErrorResponse(ErrorResponse):
+    status: int = 404
+    title: str = 'Not Found'
+
+
 class DrinkType(enum.StrEnum):
     """Type of drinks that you can order"""
 
@@ -153,6 +163,7 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         )
         self.tag_operation('create_order', 'POST', order_management)
         self.tag_operation('order_handler', 'GET', order_management)
+        self.register_error_model(404, NotFoundErrorResponse)
 
 
 class RequestHandler(web.RequestHandler):
@@ -196,6 +207,7 @@ class CreateOrderHandler(RequestHandler):
 
 class OrderHandler(RequestHandler):
     @api.expose_operation(summary='Retrieve order details')
+    @api.add_error_response(404, description='Order not found')
     async def get(self, order_id: int) -> ActiveOrder:
         self.logger.info('fetching %r', order_id)
         try:

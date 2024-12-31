@@ -1,3 +1,4 @@
+import collections
 import http.client
 import re
 import secrets
@@ -39,11 +40,16 @@ class OpenAPIDocument:
     def __init__(self) -> None:
         self.openapi_doc = models.OpenAPI()
         self.__model_map: dict[type[pydantic.BaseModel], models.Reference] = {}
+        self.__defaulted_errors: dict[
+            int, list[tuple[models.Operation, api.ErrorResponseDefinition]]
+        ]
+        self.__defaulted_errors = collections.defaultdict(list)
+        self.__default_errors: dict[int, models.Reference] = {}
 
     def render(self) -> dict[str, object]:
         return self.openapi_doc.model_dump(by_alias=True)
 
-    def add_operation(  # noqa: C901
+    def add_operation(  # noqa: C901, PLR0912
         self,
         http_method: str,
         rule: routing.Rule,
@@ -91,6 +97,23 @@ class OpenAPIDocument:
                 description = f'Unknown HTTP {status_code}'
             operation.responses[str(status_code)] = models.Response(
                 description=description,
+                content={'application/json': models.Content(schema=ref)},
+            )
+        for status_code, defn in marker.errors.items():
+            if model := defn.get('model'):
+                ref = self._add_model(model)
+            elif default := self.__default_errors.get(status_code):
+                ref = default
+            else:
+                self.__defaulted_errors[status_code].append((operation, defn))
+                continue
+            operation.responses[str(status_code)] = models.Response(
+                description=defn.get(
+                    'description',
+                    http.client.responses.get(
+                        status_code, f'Unknown HTTP {status_code}'
+                    ),
+                ),
                 content={'application/json': models.Content(schema=ref)},
             )
 
@@ -186,6 +209,27 @@ class OpenAPIDocument:
                     raise errors.TagNotFoundError(tag_name) from None
 
             operation.tags.append(tag_instance.name)
+
+    def set_default_error_model(
+        self,
+        status_code: int,
+        model: type[pydantic.BaseModel],
+        *,
+        description: str | None = None,
+    ) -> None:
+        ref = self._add_model(model)
+        description = (
+            f'Unknown HTTP {status_code}'
+            if description is None
+            else description
+        )
+        for operation, defn in self.__defaulted_errors[status_code]:
+            operation.responses[str(status_code)] = models.Response(
+                description=defn.get('description', description),
+                content={'application/json': models.Content(schema=ref)},
+            )
+        self.__defaulted_errors.pop(status_code)
+        self.__default_errors[status_code] = ref
 
     def _add_model(self, model: type[pydantic.BaseModel]) -> models.Reference:
         try:

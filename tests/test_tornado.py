@@ -134,6 +134,11 @@ class Item(pydantic.BaseModel):
     name: str
 
 
+class ErrorModel(pydantic.BaseModel):
+    status: int
+    title: str
+
+
 class CreateItemHandler(tornado.web.RequestHandler):
     @api.expose_operation(
         operation_id='createItem',
@@ -141,6 +146,7 @@ class CreateItemHandler(tornado.web.RequestHandler):
         default_status=http.HTTPStatus.CREATED,
         tags=['items'],
     )
+    @api.add_error_response(http.HTTPStatus.CONFLICT)
     async def post(
         self,
         body: typing.Annotated[
@@ -164,13 +170,21 @@ class Application(handlers.OpenAPIApplication):
     def __init__(self, **settings: object) -> None:
         super().__init__(
             [
-                tornado.web.url(
-                    r'/items', CreateItemHandler, name='createItem'
-                ),
                 tornado.web.url(r'/items/(.*)', ItemHandler),
                 tornado.web.url(r'/openapi.json', handlers.OpenAPISpecHandler),
             ],
             **settings,
+        )
+
+        self.register_error_model(http.HTTPStatus.CONFLICT, ErrorModel)
+
+        # The following tests adding a handler explicitly *after* setting
+        # up an error model. Note that the @api.add_error_response decorator
+        # does not mention the model. The openapi processing remembers that
+        # CONFLICT is registered and stitches the information together.
+        self.add_handlers(
+            r'.*',
+            [tornado.web.url(r'/items', CreateItemHandler, name='createItem')],
         )
 
 
@@ -215,6 +229,16 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
             str(http.HTTPStatus.CREATED),
             data['paths']['/items']['post']['responses'],
         )
+        self.assertIn(
+            str(http.HTTPStatus.CONFLICT),
+            data['paths']['/items']['post']['responses'],
+        )
+        response = data['paths']['/items']['post']['responses']['409']
+        self.assertEqual(
+            response['content']['application/json']['schema']['$ref'],
+            '#/components/schemas/ErrorModel',
+        )
+        self.assertIn('ErrorModel', data['components']['schemas'])
 
     async def test_openapi_unnamed_parameters(self) -> None:
         data = self.app.openapi_doc.render()

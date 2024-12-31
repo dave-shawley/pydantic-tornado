@@ -1,8 +1,6 @@
-import copy
 import functools
 import inspect
 import typing
-from collections import abc
 
 import pydantic
 from tornado import web
@@ -109,7 +107,12 @@ def expose_operation(  # noqa: C901, PLR0915
     def outer(  # noqa: C901, PLR0912, PLR0915
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> RequestMethod:
-        marker = OpenAPIMethodInfo(extra=kwargs)
+        try:
+            marker = OpenAPIMethodInfo.extract(func)
+        except errors.MarkerNotFoundError:
+            marker = OpenAPIMethodInfo()
+
+        marker.extra.update(kwargs)
         body_cls: type[pydantic.BaseModel] | None = None
         body_param: inspect.Parameter | None = None
 
@@ -231,6 +234,32 @@ def expose_operation(  # noqa: C901, PLR0915
     return outer
 
 
+class ErrorResponseDefinition(typing.TypedDict):
+    model: typing.NotRequired[type[pydantic.BaseModel] | None]
+    description: typing.NotRequired[str | None]
+
+
+def add_error_response(
+    status_code: int,
+    **kwargs: typing.Unpack[ErrorResponseDefinition],
+) -> typing.Callable[
+    [typing.Callable[..., typing.Awaitable[ModelType | None]]],
+    typing.Callable[..., typing.Awaitable[ModelType | None]],
+]:
+    def wrapper(
+        func: typing.Callable[..., typing.Awaitable[ModelType | None]],
+    ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
+        try:
+            marker = OpenAPIMethodInfo.extract(func)
+        except errors.MarkerNotFoundError:
+            marker = OpenAPIMethodInfo()
+            marker.attach(func)
+        marker.errors[status_code] = kwargs
+        return func
+
+    return wrapper
+
+
 def _convert_parameter_value(
     param_def: inspect.Parameter, value: str
 ) -> str | int | bool | float | None:
@@ -275,20 +304,15 @@ class OpenAPIMethodInfo:
     EMPTY: 'OpenAPIMethodInfo'
 
     def __init__(
-        self,
-        *,
-        response_type: type[pydantic.BaseModel] | None = None,
-        extra: abc.Mapping[str, object | str | int | bool | None | list[str]]
-        | None = None,
+        self, *, response_type: type[pydantic.BaseModel] | None = None
     ) -> None:
         super().__init__()
         self._body_parameter_info: _BodyParameterInfo | None = None
         self.response_type = response_type
         self.parameters: dict[str, inspect.Parameter] = {}
+        self.errors: dict[int, ErrorResponseDefinition] = {}
         self.extra: dict[str, object | str | int | bool | None | list[str]]
         self.extra = {}
-        if extra:
-            self.extra.update(copy.deepcopy(extra))
 
     @property
     def request_body(self) -> _BodyParameterInfo | None:
@@ -326,6 +350,7 @@ class OpenAPIMethodInfo:
         """Does this instance contain information?"""
         return (
             not bool(self.parameters)
+            and not bool(self.errors)
             and not bool(self.extra)
             and self._body_parameter_info is None
         )
@@ -335,6 +360,7 @@ class _FrozenMethodInfo(OpenAPIMethodInfo):
     def __init__(self) -> None:
         for attr in (
             '_body_parameter_info',
+            'errors',
             'extra',
             'parameters',
             'response_type',

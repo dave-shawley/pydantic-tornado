@@ -6,15 +6,17 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
-from pydantictornado import api, errors, openapi
+from pydantictornado import api, errors, models, openapi
 
 
-class UndecoratedHandler(tornado.web.RequestHandler):
+class AutoInitializingHandler(tornado.web.RequestHandler):
     def __init__(self) -> None:
         request = tornado.httputil.HTTPServerRequest()
         request.connection = unittest.mock.Mock()
         super().__init__(tornado.web.Application(), request)
 
+
+class UndecoratedHandler(AutoInitializingHandler):
     async def get(self) -> None:
         pass
 
@@ -31,12 +33,12 @@ class ResponseModel(pydantic.BaseModel):
     name: str
 
 
-class DecoratedHandler(tornado.web.RequestHandler):
-    def __init__(self) -> None:
-        request = tornado.httputil.HTTPServerRequest()
-        request.connection = unittest.mock.Mock()
-        super().__init__(tornado.web.Application(), request)
+class ErrorModel(pydantic.BaseModel):
+    status_code: int
+    title: str
 
+
+class DecoratedHandler(AutoInitializingHandler):
     @api.expose_operation
     async def get(self, item_id: int) -> None:  # noqa: ARG002
         return None
@@ -127,6 +129,66 @@ class TestAddOperation(unittest.TestCase):
 
         finally:
             marker.extra.pop('default_status')
+
+    def test_add_operation_with_additional_status_codes(self) -> None:
+        handler = DecoratedHandler()
+        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
+
+        self.doc.set_default_error_model(404, ErrorModel)
+        test_data: dict[int, api.ErrorResponseDefinition] = {
+            400: {'description': 'Bad Request', 'model': ErrorModel},
+            404: {'description': 'Not Found'},
+            409: {},
+            500: {'model': ErrorModel},
+            600: {'model': ErrorModel},
+        }
+
+        def assert_error_response(
+            operation: models.Operation, status_code: int, description: str
+        ) -> None:
+            try:
+                response = operation.responses[str(status_code)]
+            except KeyError:
+                self.fail(f'No response for status code {status_code}')
+            self.assertEqual(description, response.description)
+
+            try:
+                content = response.content['application/json']  # type: ignore[index]
+            except KeyError:
+                self.fail('Response does not have application/json content')
+            self.assertIsInstance(content.schema_, models.Reference)
+            self.assertEqual(
+                content.schema_.ref, '#/components/schemas/ErrorModel'
+            )
+
+        marker = api.OpenAPIMethodInfo.extract(handler.post)
+        with unittest.mock.patch.object(marker, 'errors', test_data):
+            self.doc.add_operation('POST', rule, handler.post)
+            operation = self.doc.get_operation(rule, 'POST')
+
+            assert_error_response(operation, 400, 'Bad Request')
+            assert_error_response(operation, 404, 'Not Found')
+            assert_error_response(operation, 500, 'Internal Server Error')
+            assert_error_response(operation, 600, 'Unknown HTTP 600')
+
+        self.assertIn(409, self.doc._OpenAPIDocument__defaulted_errors)  # type: ignore[attr-defined]
+
+    def test_set_default_error_model(self) -> None:
+        class Handler(AutoInitializingHandler):
+            @api.expose_operation
+            @api.add_error_response(404)
+            async def get(self, item_id: int) -> ResponseModel:
+                return ResponseModel(id=item_id, name='test')
+
+        handler = Handler()
+        rule = tornado.routing.URLSpec(r'/(?P<item_id>.*)', Handler)
+        self.doc.add_operation('GET', rule, handler.get)
+
+        operation = self.doc.get_operation(rule, 'GET')
+        self.assertIsNone(operation.responses.get('404'))
+
+        self.doc.set_default_error_model(404, ErrorModel)
+        self.assertIsNotNone(operation.responses.get('404'))
 
 
 class AddModelTests(unittest.TestCase):
