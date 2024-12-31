@@ -60,7 +60,7 @@ class Order(pydantic.RootModel[list[Item]]):
     def __len__(self) -> int:
         return len(self.root)
 
-    def __iter__(self) -> abc.Iterator[Item]:
+    def __iter__(self) -> abc.Iterator[Item]:  # type: ignore[override]
         return iter(self.root)
 
     def __getitem__(self, item: int) -> Item:

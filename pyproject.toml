@@ -68,7 +68,7 @@ python = "python3.12"
 github-pages = ["mkdocs gh-deploy --force"]
 test = [
   "pre-commit run --all-files",
-  "mypy -p pydantictornado -p tests",
+  "mypy -p pydantictornado -p tests -p examples",
   "python -m coverage run -m pytest tests",
   "python -m coverage report",
 ]
