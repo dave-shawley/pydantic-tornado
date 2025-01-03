@@ -237,3 +237,17 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
 
         handler = self.create_handler(Handler, body=Model(name='whatever'))
         await handler.post('12')  # type: ignore[misc]
+
+    async def test_default_status(self) -> None:
+        class Handler(web.RequestHandler):
+            @api.expose_operation(default_status=201)
+            async def post(self) -> None:
+                pass
+
+        marker = self.extract_marker(Handler.post)
+        self.assertEqual(marker.extra['default_status'], 201)
+
+        handler = self.create_handler(Handler)
+        with unittest.mock.patch.object(handler, 'set_status') as set_status:
+            await handler.post()  # type: ignore[misc]
+            set_status.assert_called_once_with(201)

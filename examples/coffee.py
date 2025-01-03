@@ -7,9 +7,7 @@ https://www.infoq.com/articles/webber-rest-workflow/
 import asyncio
 import contextlib
 import enum
-import http.client
 import logging
-import types
 import typing
 from collections import abc
 
@@ -101,17 +99,6 @@ MENU: dict[DrinkType, dict[DrinkSize, float]] = {
 }
 
 
-class ErrorKwargs(typing.TypedDict, total=False):
-    exc_info: typing.NotRequired[
-        tuple[
-            type,
-            BaseException,
-            types.TracebackType | None,
-        ]
-    ]
-    reason: typing.NotRequired[str]
-
-
 class OrderManager:
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
@@ -166,7 +153,7 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         self.register_error_model(404, NotFoundErrorResponse)
 
 
-class RequestHandler(web.RequestHandler):
+class RequestHandler(handlers.PydanticErrorHandler):
     application: Application
 
     def __init__(
@@ -177,22 +164,6 @@ class RequestHandler(web.RequestHandler):
     ) -> None:
         super().__init__(application, request, **kwargs)
         self.logger = logging.getLogger(self.__class__.__name__)
-
-    def write_error(  # type: ignore[override]
-        self, status_code: int, **kwargs: typing.Unpack[ErrorKwargs]
-    ) -> None:
-        exc_info = kwargs.get('exc_info')
-        reason = kwargs.get('reason')
-        if not reason and exc_info:
-            exc_value = exc_info[1]
-            if isinstance(exc_value, web.HTTPError):
-                reason = exc_value.reason
-        if not reason:
-            reason = http.client.responses.get(status_code, 'Unknown')
-
-        body = {'status': status_code, 'title': reason}
-        self.set_header('Content-Type', 'application/problem+json')
-        self.write(body)
 
 
 class CreateOrderHandler(RequestHandler):
@@ -213,7 +184,7 @@ class OrderHandler(RequestHandler):
         try:
             return self.application.orders[order_id]
         except KeyError:
-            raise web.HTTPError(404, reason='Order not found') from None
+            raise api.StructuredError(404, NotFoundErrorResponse()) from None
 
 
 async def main() -> None:

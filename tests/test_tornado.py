@@ -139,7 +139,7 @@ class ErrorModel(pydantic.BaseModel):
     title: str
 
 
-class CreateItemHandler(tornado.web.RequestHandler):
+class CreateItemHandler(handlers.PydanticErrorHandler):
     @api.expose_operation(
         operation_id='createItem',
         summary='Create an item',
@@ -153,6 +153,12 @@ class CreateItemHandler(tornado.web.RequestHandler):
             CreateItemRequest, api.Body(description='The item to create')
         ],
     ) -> Item:
+        if body.name == 'conflict':
+            self.set_status(http.HTTPStatus.CONFLICT)
+            raise api.StructuredError(
+                http.HTTPStatus.CONFLICT,
+                ErrorModel(status=409, title='Conflict'),
+            )
         return Item(id=42, name=body.name)
 
 
@@ -348,3 +354,85 @@ class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):
         rsp = await self.client.fetch(self.url('/docs'))
         self.assertEqual(rsp.code, 200)
         self.assertEqual(rsp.headers['Cache-Control'], 'public, max-age=3600')
+
+
+class TestErrorHandling(tests.AsyncTestCase[Application]):
+    @staticmethod
+    def create_app() -> Application:
+        return Application()
+
+    async def test_structured_error_handler(self) -> None:
+        rsp = await self.client.fetch(
+            self.url('/items'),
+            method='POST',
+            body=json.dumps({'name': 'conflict'}),
+            headers={'content-type': 'application/json'},
+            raise_error=False,
+        )
+        self.assertEqual(rsp.code, http.HTTPStatus.CONFLICT)
+        self.assertEqual(rsp.headers['content-type'], 'application/json')
+        error = ErrorModel.model_validate_json(rsp.body)
+        self.assertEqual(error.status, 409)
+        self.assertEqual(error.title, 'Conflict')
+
+    def test_body_formatting(self) -> None:
+        expected = ErrorModel(status=404, title='Not Found')
+        content_type, body = self.app.format_body(
+            unittest.mock.Mock(),
+            expected.model_dump(mode='python'),
+        )
+        self.assertEqual(content_type, 'application/json')
+        self.assertEqual(ErrorModel.model_validate_json(body), expected)
+
+        content_type, body = self.app.format_body(unittest.mock.Mock(), body)
+        self.assertEqual(content_type, 'application/json')
+        self.assertEqual(
+            ErrorModel.model_validate_json(body),
+            expected,
+            'body should not be serialized again',
+        )
+
+        result = self.app.format_body(unittest.mock.Mock(), None)
+        self.assertEqual(content_type, 'application/json')
+        self.assertIsNone(result)
+
+    def test_simplest_error_formatting(self) -> None:
+        result = self.app.format_error(unittest.mock.Mock(), 404)
+        content_type, raw_body = self.unwrap(result, tuple[str, bytes])
+        self.assertEqual(content_type, 'application/json')
+        body = json.loads(raw_body.decode('utf-8'))
+        self.assertEqual(body['status'], 404)
+        self.assertEqual(
+            body['title'], http.HTTPStatus.NOT_FOUND.phrase.title()
+        )
+        self.assertNotIn('detail', body)
+
+    def test_error_formatting_http_error(self) -> None:
+        error = tornado.web.HTTPError(404)
+        result = self.app.format_error(
+            unittest.mock.Mock(), 404, exc_info=(type(error), error, None)
+        )
+        content_type, raw_body = self.unwrap(result, tuple[str, bytes])
+        self.assertEqual(content_type, 'application/json')
+        body = json.loads(raw_body.decode('utf-8'))
+        self.assertEqual(body['status'], 404)
+        self.assertEqual(
+            body['title'], http.HTTPStatus.NOT_FOUND.phrase.title()
+        )
+        self.assertEqual(body['detail'], str(error))
+
+    def test_error_formatting_http_error_with_explicit_reason(self) -> None:
+        error = tornado.web.HTTPError(404, reason='Item not found')
+        result = self.app.format_error(
+            unittest.mock.Mock(), 404, exc_info=(type(error), error, None)
+        )
+        content_type, raw_body = self.unwrap(result, tuple[str, bytes])
+        self.assertEqual(content_type, 'application/json')
+        body = json.loads(raw_body.decode('utf-8'))
+        self.assertEqual(body['status'], 404)
+        self.assertEqual(body['title'], 'Item not found')
+        self.assertEqual(body['detail'], str(error))
+
+    def test_creating_invalid_structured_error(self) -> None:
+        with self.assertRaises(TypeError):
+            api.StructuredError(404, None)  # type: ignore[type-var]

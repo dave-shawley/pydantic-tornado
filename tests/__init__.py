@@ -39,3 +39,7 @@ class AsyncTestCase(
         return urllib.parse.urljoin(
             f'http://{self.server_address}:{self.server_port}/', path
         )
+
+    def unwrap[T](self, obj: object, _cast_to: type[T]) -> T:
+        self.assertIsNotNone(obj)
+        return typing.cast(T, obj)

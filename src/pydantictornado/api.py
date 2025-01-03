@@ -200,6 +200,11 @@ def expose_operation(  # noqa: C901, PLR0915
                 if body_param.kind == inspect.Parameter.KEYWORD_ONLY:
                     converted_kwargs[body_param.name] = body
 
+            if default_status := marker.extra.get('default_status'):
+                if hasattr(self, 'set_default_status'):
+                    self.set_default_status(typing.cast(int, default_status))
+                self.set_status(typing.cast(int, default_status))
+
             remaining_args = list(args)
             for arg in positional_args:
                 if arg is body_param:
@@ -222,8 +227,6 @@ def expose_operation(  # noqa: C901, PLR0915
                 self, *converted_args, **converted_kwargs
             )
 
-            if status_code := marker.extra.get('default_status'):
-                self.set_status(typing.cast(int, status_code))
             if isinstance(maybe_response, pydantic.BaseModel):
                 self.set_header('content-type', 'application/json')
                 self.write(maybe_response.model_dump_json())
@@ -376,3 +379,20 @@ class _FrozenMethodInfo(OpenAPIMethodInfo):
 
 
 OpenAPIMethodInfo.EMPTY = _FrozenMethodInfo()
+
+
+class StructuredError[T: pydantic.BaseModel](web.HTTPError):
+    body: T
+
+    def __init__(
+        self,
+        status_code: int,
+        body: T,
+        log_message: str | None = None,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        if body is None:
+            raise TypeError('body must be a pydantic model instance')
+        super().__init__(status_code, log_message, *args, **kwargs)
+        self.body = body
