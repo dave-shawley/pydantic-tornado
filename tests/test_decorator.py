@@ -212,6 +212,21 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             }
         )
 
+        handler.write.reset_mock()
+        await handler.put(  # item_id is kwarg or positional
+            'items', '1', item_id='2', overwrite='yes', cost=1.23
+        )  # type: ignore[misc]
+        handler.write.assert_called_once_with(
+            {
+                'category': 'str',
+                'content': 'Model',
+                'cost': 'float',
+                'item_id': 'int',
+                'overwrite': 'bool',
+                'parent_id': 'int',
+            }
+        )
+
     async def test_positional_body_parameter(self) -> None:
         class Handler(web.RequestHandler):
             @api.expose_operation

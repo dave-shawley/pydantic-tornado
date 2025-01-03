@@ -176,7 +176,7 @@ def expose_operation(  # noqa: C901, PLR0915
         # keyword_args contains the keyword only parameters.
 
         @functools.wraps(func)
-        async def wrapper(
+        async def wrapper(  # noqa: C901
             self: web.RequestHandler, *args: str, **kwargs: str
         ) -> None:
             # Method is invoked as `op(*converted_args, **converted_kwargs)`
@@ -204,6 +204,10 @@ def expose_operation(  # noqa: C901, PLR0915
             for arg in positional_args:
                 if arg is body_param:
                     converted_args.append(body)
+                elif arg.name in kwargs:
+                    converted_args.append(
+                        _convert_parameter_value(arg, kwargs.pop(arg.name))
+                    )
                 else:
                     converted_args.append(
                         _convert_parameter_value(arg, remaining_args.pop(0))
