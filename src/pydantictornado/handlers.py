@@ -68,7 +68,16 @@ class ResponseFormatter:
                 'reason', http.client.responses.get(status_code, 'Unknown')
             ).title()
         body = {'status': status_code, 'title': reason}
-        if exc is not None:
+        if isinstance(exc, errors.BodyValidationError):
+            formatted = exc.error.errors(
+                include_url=False, include_input=False, include_context=False
+            )
+            if formatted:
+                body['detail'] = formatted[0]['msg']
+            else:
+                body['detail'] = exc.error.title or str(exc.error)
+            body['errors'] = formatted
+        elif exc is not None:
             body['detail'] = str(exc)
         return self.format_body(handler.request, body)
 

@@ -192,11 +192,7 @@ def expose_operation(  # noqa: C901, PLR0915
                 try:
                     body = body_cls.model_validate_json(self.request.body)
                 except pydantic.ValidationError as exc:
-                    raise web.HTTPError(
-                        422,
-                        'failed to validate request body: %s',
-                        exc.errors(),
-                    ) from exc
+                    raise errors.BodyValidationError(exc) from None
                 if body_param.kind == inspect.Parameter.KEYWORD_ONLY:
                     converted_kwargs[body_param.name] = body
 

@@ -436,3 +436,43 @@ class TestErrorHandling(tests.AsyncTestCase[Application]):
     def test_creating_invalid_structured_error(self) -> None:
         with self.assertRaises(TypeError):
             api.StructuredError(404, None)  # type: ignore[type-var]
+
+    async def test_validation_errors(self) -> None:
+        bad_body = {'invalid': 'body'}
+        rsp = await self.client.fetch(
+            self.url('/items'),
+            method='POST',
+            body=json.dumps(bad_body).encode('utf-8'),
+            headers={'content-type': 'application/json'},
+            raise_error=False,
+        )
+        self.assertEqual(rsp.code, 422)
+        self.assertEqual(rsp.headers['content-type'], 'application/json')
+        with self.assertRaises(pydantic.ValidationError) as cm:
+            CreateItemRequest.model_validate(bad_body)
+        formatted = cm.exception.errors(
+            include_url=False, include_input=False, include_context=False
+        )
+        rsp_body = json.loads(rsp.body.decode('utf-8'))
+        self.assertEqual(rsp_body['detail'], formatted[0]['msg'])
+
+    async def test_strange_validation_error(self) -> None:
+        failure = pydantic.ValidationError.from_exception_data(
+            'Injected failure', []
+        )
+        with unittest.mock.patch.object(
+            CreateItemRequest, 'model_validate_json'
+        ) as model_validate:
+            model_validate.side_effect = failure
+            rsp = await self.client.fetch(
+                self.url('/items'),
+                method='POST',
+                body=json.dumps({'invalid': 'body'}).encode('utf-8'),
+                headers={'content-type': 'application/json'},
+                raise_error=False,
+            )
+            self.assertEqual(rsp.code, 422)
+            self.assertEqual(rsp.headers['content-type'], 'application/json')
+
+        rsp_body = json.loads(rsp.body.decode('utf-8'))
+        self.assertEqual(rsp_body['detail'], failure.title)

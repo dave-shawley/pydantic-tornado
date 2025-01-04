@@ -1,3 +1,7 @@
+import pydantic
+from tornado import web
+
+
 class Error(Exception):
     pass
 
@@ -48,3 +52,11 @@ class UnsupportedParameterError(Error):
         super().__init__(f'Parameter {param_name} is not supported: {reason}')
         self.param_name = param_name
         self.reason = reason
+
+
+class BodyValidationError(Error, web.HTTPError):
+    """Request body validation failed."""
+
+    def __init__(self, error: pydantic.ValidationError) -> None:
+        super().__init__(422, 'failed to validate request: %s', error.title)
+        self.error = error

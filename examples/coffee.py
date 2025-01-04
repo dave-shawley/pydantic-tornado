@@ -53,6 +53,14 @@ class Item(pydantic.BaseModel):
     drink: DrinkType
     size: DrinkSize
 
+    @pydantic.model_validator(mode='after')
+    def validate_drink(self) -> 'Item':
+        try:
+            MENU[self.drink][self.size]
+        except KeyError:
+            raise ValueError('Item not found in menu') from None
+        return self
+
 
 class Order(pydantic.RootModel[list[Item]]):
     def __len__(self) -> int:
