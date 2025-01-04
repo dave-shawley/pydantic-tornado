@@ -1,12 +1,16 @@
 """Canonical REST API example
 
-https://www.infoq.com/articles/webber-rest-workflow/
+This example is loosely based on the classic [How to GET a Cup of Coffee] by
+Jim Webber. It demonstrates a simple REST API for ordering coffee drinks.
+
+[How to GET a Cup of Coffee]: https://www.infoq.com/articles/webber-rest-workflow/
 
 """
 
 import asyncio
 import contextlib
 import enum
+import http
 import logging
 import typing
 from collections import abc
@@ -20,6 +24,11 @@ from pydantictornado import api, handlers
 class ErrorResponse(pydantic.BaseModel):
     status: int
     title: str
+
+
+class BadRequestErrorResponse(ErrorResponse):
+    status: int = 400
+    title: str = 'Bad Request'
 
 
 class NotFoundErrorResponse(ErrorResponse):
@@ -49,9 +58,26 @@ class DrinkSize(enum.StrEnum):
     VENTI = 'venti'
 
 
+class Additions(enum.StrEnum):
+    _cost: float
+
+    def __new__(cls, description: str, cost: float) -> typing.Self:
+        obj = str.__new__(cls, description)
+        obj._value_ = description
+        setattr(obj, '_cost', cost)  # noqa: B010
+        return obj
+
+    SHOT = 'shot', 1.00
+
+    @property
+    def cost(self) -> float:
+        return self._cost
+
+
 class Item(pydantic.BaseModel):
     drink: DrinkType
     size: DrinkSize
+    additions: list[Additions] = pydantic.Field(default_factory=list)
 
     @pydantic.model_validator(mode='after')
     def validate_drink(self) -> 'Item':
@@ -60,6 +86,14 @@ class Item(pydantic.BaseModel):
         except KeyError:
             raise ValueError('Item not found in menu') from None
         return self
+
+    @pydantic.computed_field  # type: ignore[prop-decorator]
+    @property
+    def price(self) -> float:
+        price = MENU[self.drink][self.size]
+        for addition in self.additions:
+            price += addition.cost
+        return price
 
 
 class Order(pydantic.RootModel[list[Item]]):
@@ -76,7 +110,38 @@ class Order(pydantic.RootModel[list[Item]]):
 class ActiveOrder(pydantic.BaseModel):
     order_id: int
     items: list[Item] = pydantic.Field(default_factory=list)
-    price: float = 0.0
+
+    @pydantic.computed_field  # type: ignore[prop-decorator]
+    @property
+    def total(self) -> float:
+        return sum(item.price for item in self.items)
+
+
+class UpdateOrderItem(pydantic.BaseModel):
+    update_type: typing.Literal['update_item']
+    item_index: int
+    additions: list[Additions]
+
+
+class AddItemToOrder(pydantic.BaseModel):
+    update_type: typing.Literal['add_item']
+    item: Item
+
+
+class RemoveItemFromOrder(pydantic.BaseModel):
+    update_type: typing.Literal['remove_item']
+    item_index: int
+
+
+OrderUpdate = AddItemToOrder | RemoveItemFromOrder | UpdateOrderItem
+
+
+class OrderUpdateRequest(pydantic.RootModel[list[OrderUpdate]]):
+    def __iter__(self) -> abc.Iterator[OrderUpdate]:  # type: ignore[override]
+        return iter(self.root)
+
+    def __getitem__(self, item: int) -> OrderUpdate:
+        return self.root[item]
 
 
 MENU: dict[DrinkType, dict[DrinkSize, float]] = {
@@ -116,21 +181,12 @@ class OrderManager:
 
     def create_order(self, order: Order) -> ActiveOrder:
         order_id, self._order_id = self._order_id, self._order_id + 1
-        active_order = ActiveOrder(order_id=order_id)
-        for item in order:
-            try:
-                price = self.menu[item.drink][item.size]
-            except KeyError:
-                raise web.HTTPError(
-                    400, reason='Item not found in menu'
-                ) from None
-            active_order.items.append(item)
-            active_order.price += price
+        active_order = ActiveOrder(order_id=order_id, items=order)
         self.orders[order_id] = active_order
         self.logger.info(
             'created order ID %r, current cost %.2f',
             order_id,
-            active_order.price,
+            active_order.total,
         )
         return active_order
 
@@ -158,6 +214,8 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         )
         self.tag_operation('create_order', 'POST', order_management)
         self.tag_operation('order_handler', 'GET', order_management)
+        self.tag_operation('order_handler', 'PUT', order_management)
+        self.register_error_model(400, BadRequestErrorResponse)
         self.register_error_model(404, NotFoundErrorResponse)
 
 
@@ -172,6 +230,16 @@ class RequestHandler(handlers.PydanticErrorHandler):
     ) -> None:
         super().__init__(application, request, **kwargs)
         self.logger = logging.getLogger(self.__class__.__name__)
+
+    def options(self) -> None:
+        allowed: list[str] = [
+            method_name
+            for method_name in self.SUPPORTED_METHODS
+            if getattr(self, method_name.lower()) != self._unimplemented_method
+        ]
+        if allowed:
+            self.set_header('Allow', ', '.join(allowed))
+        self.set_status(http.HTTPStatus.NO_CONTENT)
 
 
 class CreateOrderHandler(RequestHandler):
@@ -193,6 +261,46 @@ class OrderHandler(RequestHandler):
             return self.application.orders[order_id]
         except KeyError:
             raise api.StructuredError(404, NotFoundErrorResponse()) from None
+
+    @api.expose_operation(summary='Update an order')
+    @api.add_error_response(400, description='Order item not found')
+    @api.add_error_response(404, description='Order not found')
+    async def put(
+        self,
+        order_id: int,
+        *,
+        body: typing.Annotated[OrderUpdateRequest, api.Body],
+    ) -> ActiveOrder:
+        try:
+            order = self.application.orders[order_id]
+        except KeyError:
+            raise api.StructuredError(404, NotFoundErrorResponse()) from None
+
+        self.logger.info('update request: %s', body)
+        for update in body:
+            match update:
+                case AddItemToOrder():
+                    order.items.append(update.item)
+                case RemoveItemFromOrder():
+                    try:
+                        del order.items[update.item_index]
+                    except IndexError:
+                        raise api.StructuredError(
+                            400, BadRequestErrorResponse()
+                        ) from None
+                case UpdateOrderItem():
+                    try:
+                        order.items[update.item_index].additions.extend(
+                            update.additions
+                        )
+                    except IndexError:
+                        raise api.StructuredError(
+                            400, BadRequestErrorResponse()
+                        ) from None
+                case _ as unexpected:
+                    typing.assert_never(unexpected)
+
+        return order
 
 
 async def main() -> None:
