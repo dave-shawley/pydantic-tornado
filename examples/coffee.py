@@ -18,7 +18,7 @@ from collections import abc
 import pydantic
 from tornado import httputil, routing, web
 
-from pydantictornado import api, handlers
+from pydantictornado import api, handlers, openapi
 
 
 class ErrorResponse(pydantic.BaseModel):
@@ -217,6 +217,7 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         self.tag_operation('order_handler', 'PUT', order_management)
         self.register_error_model(400, BadRequestErrorResponse)
         self.register_error_model(404, NotFoundErrorResponse)
+        self.register_error_model(422, openapi.ValidationError)
 
 
 class RequestHandler(handlers.PydanticErrorHandler):
@@ -244,6 +245,7 @@ class RequestHandler(handlers.PydanticErrorHandler):
 
 class CreateOrderHandler(RequestHandler):
     @api.expose_operation(default_status=201, summary='Create a new order')
+    @api.add_error_response(422, description='Body validation error')
     async def post(
         self,
         body: typing.Annotated[Order, api.Body(description='Order details')],
@@ -265,6 +267,7 @@ class OrderHandler(RequestHandler):
     @api.expose_operation(summary='Update an order')
     @api.add_error_response(400, description='Order item not found')
     @api.add_error_response(404, description='Order not found')
+    @api.add_error_response(422, description='Body validation error')
     async def put(
         self,
         order_id: int,

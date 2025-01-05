@@ -254,6 +254,67 @@ class OpenAPIDocument:
         return ref
 
 
+class ValidationErrorDetail(pydantic.BaseModel):
+    type: str = pydantic.Field(
+        description=(
+            'The type of error that occurred, this identifier is '
+            'designed for programmatic use.'
+        ),
+        examples=['enum'],
+    )
+    msg: str = pydantic.Field(
+        description='A human-readable message describing the error.',
+        examples=["Input should be 'solo', 'demi' or 'grande"],
+    )
+    loc: tuple[int | str, ...] = pydantic.Field(
+        description=(
+            'Tuple of strings and integers identifying where in '
+            'the schema the error occurred.'
+        ),
+        examples=[1, 'size'],
+    )
+
+
+class ValidationError(pydantic.BaseModel):
+    """Use with register_error_model to document validation errors.
+
+    This is the structure of errors returned by handlers.ResponseFormatter.
+    Register this model as the default response for "unprocessable entity"
+    to include it in the generated OpenAPI specification.
+    ```
+    class Application(handlers.OpenAPIApplication):
+        def __init__(self, **settings: object):
+            super().__init__([web.url(r'/items', MyHandler)], **settings)
+            self.register_error_model(422, openapi.ValidationError)
+    ```
+
+    Then use it in your handlers that accept a body parameter to specify
+    that they may respond with an "unprocessable entity" error.
+    ```
+    class MyHandler(handlers.RequestHandler):
+        @api.expose_operation
+        @api.add_error_response(422)
+        async def post(self, *,
+                       body: typing.Annotated[Create, api.Body]) -> MyModel:
+            ...
+    ```
+
+    """
+
+    status: int = pydantic.Field(
+        description='HTTP status code', examples=[422]
+    )
+    title: str = pydantic.Field(
+        description='Generic description of the failure',
+        examples=['Unprocessable Entity'],
+    )
+    detail: str = pydantic.Field(
+        description='Specific description of the failure',
+        examples=["Input should be 'solo', 'demi' or 'grande'"],
+    )
+    errors: list[ValidationErrorDetail] | None = None
+
+
 def _generate_tiny_id(length: int = 8) -> str:
     return ''.join(secrets.choice(_TINY_ID_CHARS) for _ in range(length))
 
