@@ -237,6 +237,7 @@ class OpenAPIDocument:
         except KeyError:
             pydantic_schema = model.model_json_schema(
                 ref_template='#/components/schemas/{model}',
+                mode='serialization',
             )
             defs = pydantic_schema.pop('$defs', {})
             for name, value in defs.items():

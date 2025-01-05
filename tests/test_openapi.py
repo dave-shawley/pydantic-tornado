@@ -229,6 +229,24 @@ class AddModelTests(unittest.TestCase):
         self.assertIn('TestModel', self.doc.openapi_doc.components.schemas)
         self.assertIn('NestedModel', self.doc.openapi_doc.components.schemas)
 
+    def test_add_model_with_excluded_fields(self) -> None:
+        class TestModel(pydantic.BaseModel):
+            index: int = pydantic.Field(exclude=True)
+            max: int = pydantic.Field(exclude=True)
+
+            @pydantic.computed_field
+            def detail(self) -> str:
+                return f'{self.index} of {self.max}'
+
+        ref = self.doc._add_model(TestModel)
+        self.assertEqual(ref.ref, '#/components/schemas/TestModel')
+        self.assertIn('TestModel', self.doc.openapi_doc.components.schemas)
+        schema = self.doc.openapi_doc.components.schemas['TestModel']
+        props = typing.cast(dict[str, dict[str, object]], schema.properties)  # type: ignore[attr-defined]
+        self.assertIn('detail', props)
+        self.assertNotIn('index', props)
+        self.assertNotIn('max', props)
+
 
 class TinyIdTests(unittest.TestCase):
     def test_default_length(self) -> None:
