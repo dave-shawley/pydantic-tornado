@@ -92,7 +92,7 @@ class Item(pydantic.BaseModel):
     additions: list[Additions] = pydantic.Field(default_factory=list)
 
     @pydantic.model_validator(mode='after')
-    def validate_drink(self) -> 'Item':
+    def validate_drink(self) -> typing.Self:
         try:
             MENU[self.drink][self.size]
         except KeyError:
@@ -119,9 +119,39 @@ class Order(pydantic.RootModel[list[Item]]):
         return self.root[item]
 
 
+class HttpMethod(enum.StrEnum):
+    GET = 'GET'
+    POST = 'POST'
+    PUT = 'PUT'
+    DELETE = 'DELETE'
+
+
+class OrderActionName(enum.StrEnum):
+    CREATE_ORDER = 'create_order'
+    UPDATE_ORDER = 'update_order'
+
+
+class OrderAction(pydantic.BaseModel):
+    name: OrderActionName
+    method: HttpMethod
+    href: str = pydantic.Field(pattern='^/.*$')
+
+
 class ActiveOrder(pydantic.BaseModel):
     order_id: int
     items: list[Item] = pydantic.Field(default_factory=list)
+    actions: dict[str, OrderAction] = pydantic.Field(default_factory=dict)
+
+    def add_action(
+        self, name: OrderActionName, method: HttpMethod, href: str
+    ) -> None:
+        self.actions[name] = OrderAction.model_validate(
+            {
+                'name': name,
+                'method': method,
+                'href': href,
+            }
+        )
 
     @pydantic.computed_field  # type: ignore[prop-decorator]
     @property
@@ -230,6 +260,15 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         self.register_error_model(400, BadRequestErrorResponse)
         self.register_error_model(404, NotFoundErrorResponse)
         self.register_error_model(422, openapi.ValidationError)
+
+    def create_order(self, order: Order) -> ActiveOrder:
+        active_order = super().create_order(order)
+        active_order.add_action(
+            OrderActionName.UPDATE_ORDER,
+            HttpMethod.PUT,
+            self.reverse_url('order_handler', active_order.order_id),
+        )
+        return active_order
 
 
 class RequestHandler(handlers.PydanticErrorHandler):
