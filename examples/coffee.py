@@ -31,6 +31,18 @@ class BadRequestErrorResponse(ErrorResponse):
     title: str = 'Bad Request'
 
 
+class InvalidItemErrorResponse(BadRequestErrorResponse):
+    item_index: int = pydantic.Field(exclude=True)
+    item_count: int = pydantic.Field(exclude=True)
+
+    @pydantic.computed_field(description='Human presentable error message')
+    def detail(self) -> str:
+        return (
+            f'Item index {self.item_index} out of range for order'
+            f' with {self.item_count} items'
+        )
+
+
 class NotFoundErrorResponse(ErrorResponse):
     status: int = 404
     title: str = 'Not Found'
@@ -265,7 +277,9 @@ class OrderHandler(RequestHandler):
             raise api.StructuredError(404, NotFoundErrorResponse()) from None
 
     @api.expose_operation(summary='Update an order')
-    @api.add_error_response(400, description='Order item not found')
+    @api.add_error_response(
+        400, description='Order item not found', model=InvalidItemErrorResponse
+    )
     @api.add_error_response(404, description='Order not found')
     @api.add_error_response(422, description='Body validation error')
     async def put(
@@ -281,27 +295,25 @@ class OrderHandler(RequestHandler):
 
         self.logger.info('update request: %s', body)
         for update in body:
-            match update:
-                case AddItemToOrder():
-                    order.items.append(update.item)
-                case RemoveItemFromOrder():
-                    try:
-                        del order.items[update.item_index]
-                    except IndexError:
-                        raise api.StructuredError(
-                            400, BadRequestErrorResponse()
-                        ) from None
-                case UpdateOrderItem():
-                    try:
-                        order.items[update.item_index].additions.extend(
-                            update.additions
-                        )
-                    except IndexError:
-                        raise api.StructuredError(
-                            400, BadRequestErrorResponse()
-                        ) from None
-                case _ as unexpected:
-                    typing.assert_never(unexpected)
+            if isinstance(update, AddItemToOrder):
+                order.items.append(update.item)
+            else:
+                try:
+                    item = order.items[update.item_index]
+                except IndexError:
+                    raise api.StructuredError(
+                        400,
+                        InvalidItemErrorResponse(
+                            item_index=update.item_index,
+                            item_count=len(order.items),
+                        ),
+                    ) from None
+                if isinstance(update, RemoveItemFromOrder):
+                    order.items.remove(item)
+                elif isinstance(update, UpdateOrderItem):
+                    item.additions.extend(update.additions)
+                else:
+                    typing.assert_never(update)
 
         return order
 
