@@ -152,14 +152,15 @@ class OpenAPIApplication(ResponseFormatter, web.Application):
         return rule
 
     def _process_rules(self, rules: abc.Sequence[object]) -> None:
-        for rule in (r for r in rules if isinstance(r, routing.Rule)):
+        for rule in rules:
+            if not isinstance(rule, routing.URLSpec):
+                continue
+            if not issubclass(rule.target, web.RequestHandler):
+                continue
             for name, value in inspect.getmembers(
                 rule.target, inspect.iscoroutinefunction
             ):
-                if (
-                    issubclass(rule.target, web.RequestHandler)
-                    and name.upper() in rule.target.SUPPORTED_METHODS
-                ):
+                if name.upper() in rule.target.SUPPORTED_METHODS:
                     self.openapi_doc.add_operation(name.upper(), rule, value)
 
 

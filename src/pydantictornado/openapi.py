@@ -52,20 +52,12 @@ class OpenAPIDocument:
     def add_operation(  # noqa: C901, PLR0912
         self,
         http_method: str,
-        rule: routing.Rule,
+        rule: routing.URLSpec,
         func: api.RequestMethod,
     ) -> None:
         try:
             marker = api.OpenAPIMethodInfo.extract(func)
         except errors.MarkerNotFoundError:
-            return
-
-        if not isinstance(rule, routing.URLSpec):
-            warnings.warn(
-                f'{rule.__class__.__name__} rules are not supported',
-                UserWarning,
-                stacklevel=2,
-            )
             return
 
         operation_attrs: abc.MutableMapping[str, typing.Any]

@@ -6,6 +6,8 @@ import typing
 import unittest.mock
 
 import pydantic
+import tornado.httputil
+import tornado.routing
 import tornado.web
 
 import tests
@@ -172,12 +174,32 @@ class ItemHandler(tornado.web.RequestHandler):
         return Item(id=item_id, name='example')
 
 
+class LegalButStrangeHandler:
+    def __init__(
+        self,
+        _application: tornado.web.Application,
+        _request: tornado.httputil.HTTPServerRequest,
+        **_kwargs: object,
+    ) -> None:
+        pass
+
+
 class Application(handlers.OpenAPIApplication):
     def __init__(self, **settings: object) -> None:
         super().__init__(
             [
                 tornado.web.url(r'/items/(.*)', ItemHandler),
                 tornado.web.url(r'/openapi.json', handlers.OpenAPISpecHandler),
+                # We only care about URL-based routing so the following case
+                # is legal and will be ignored by the library.
+                tornado.routing.Rule(
+                    tornado.routing.HostMatches('example.com'),
+                    tornado.web.RequestHandler,
+                ),
+                # This is legal but strange since the handler is not a subclass
+                # of RequestHandler. It is included here to ensure that the
+                # library doesn't explode when encountering such a handler.
+                tornado.web.url(r'/strange', LegalButStrangeHandler),
             ],
             **settings,
         )

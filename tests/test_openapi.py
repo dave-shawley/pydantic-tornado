@@ -109,15 +109,6 @@ class TestAddOperation(AddOperationTest):
         self.assertEqual(len(self.doc.openapi_doc.paths), 1)
         self.assertIn('/test/{item_id}', self.doc.openapi_doc.paths)
 
-    def test_add_operation_with_non_rule(self) -> None:
-        rule = tornado.routing.Rule(
-            tornado.routing.HostMatches('localhost'),
-            DecoratedHandler,
-        )
-        with self.assertWarns(UserWarning):
-            self.doc.add_operation('GET', rule, DecoratedHandler.get)
-        self.assertEqual(len(self.doc.openapi_doc.paths), 0)
-
     def test_add_operation_with_invalid_default_status(self) -> None:
         rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
         marker = api.OpenAPIMethodInfo.extract(DecoratedHandler.post)
