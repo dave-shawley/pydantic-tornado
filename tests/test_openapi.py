@@ -50,22 +50,35 @@ class DecoratedHandler(AutoInitializingHandler):
         return ResponseModel(id=42, name=body.name)
 
 
-class TestAddOperation(unittest.TestCase):
+class AddOperationTest(unittest.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.doc = openapi.OpenAPIDocument()
 
+    def add_operation(
+        self,
+        path: str,
+        method: str,
+        handler_cls: type[tornado.web.RequestHandler],
+    ) -> models.Operation:
+        rule = tornado.routing.URLSpec(path, handler_cls)
+        self.doc.add_operation(
+            method.upper(), rule, getattr(handler_cls, method.lower())
+        )
+        return self.doc.get_operation(rule, method.upper())
+
+
+class TestAddOperation(AddOperationTest):
     def test_add_operation_without_marker(self) -> None:
-        handler = UndecoratedHandler()
         rule = tornado.routing.URLSpec(r'/test', UndecoratedHandler)
-        self.doc.add_operation('GET', rule, handler.get)
+        self.doc.add_operation('GET', rule, UndecoratedHandler.get)
 
         self.assertEqual(len(self.doc.openapi_doc.paths), 0)
+        with self.assertRaises(errors.OperationNotFoundError):
+            self.doc.get_operation(rule, 'GET')
 
     def test_add_operation_with_body_and_response(self) -> None:
-        handler = DecoratedHandler()
-        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
-        self.doc.add_operation('POST', rule, handler.post)
+        self.add_operation(r'/test', 'POST', DecoratedHandler)
 
         self.assertEqual(len(self.doc.openapi_doc.paths), 1)
         path_item = self.doc.openapi_doc.paths['/test']
@@ -90,38 +103,32 @@ class TestAddOperation(unittest.TestCase):
         )
 
     def test_add_operation_path_params(self) -> None:
-        handler = DecoratedHandler()
-        rule = tornado.routing.URLSpec(
-            r'/test/(?P<item_id>[^/]+)', DecoratedHandler
+        self.add_operation(
+            r'/test/(?P<item_id>[^/]+)', 'GET', DecoratedHandler
         )
-        self.doc.add_operation('GET', rule, handler.get)
-
         self.assertEqual(len(self.doc.openapi_doc.paths), 1)
         self.assertIn('/test/{item_id}', self.doc.openapi_doc.paths)
 
     def test_add_operation_with_non_rule(self) -> None:
-        handler = DecoratedHandler()
         rule = tornado.routing.Rule(
             tornado.routing.HostMatches('localhost'),
             DecoratedHandler,
         )
         with self.assertWarns(UserWarning):
-            self.doc.add_operation('GET', rule, handler.get)
+            self.doc.add_operation('GET', rule, DecoratedHandler.get)
         self.assertEqual(len(self.doc.openapi_doc.paths), 0)
 
     def test_add_operation_with_invalid_default_status(self) -> None:
-        handler = DecoratedHandler()
         rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
-
-        marker = api.OpenAPIMethodInfo.extract(handler.post)
+        marker = api.OpenAPIMethodInfo.extract(DecoratedHandler.post)
         try:
             marker.extra['default_status'] = 'not-a-number'
             with self.assertRaises(TypeError):
-                self.doc.add_operation('POST', rule, handler.post)
+                self.doc.add_operation('POST', rule, DecoratedHandler.post)
 
             marker.extra['default_status'] = 600
             try:
-                self.doc.add_operation('POST', rule, handler.post)
+                self.doc.add_operation('POST', rule, DecoratedHandler.post)
             except Exception:  # noqa: BLE001
                 self.fail(
                     'add_operation should not fail with unknown status code'
@@ -131,9 +138,6 @@ class TestAddOperation(unittest.TestCase):
             marker.extra.pop('default_status')
 
     def test_add_operation_with_additional_status_codes(self) -> None:
-        handler = DecoratedHandler()
-        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
-
         self.doc.set_default_error_model(404, ErrorModel)
         test_data: dict[int, api.ErrorResponseDefinition] = {
             400: {'description': 'Bad Request', 'model': ErrorModel},
@@ -161,9 +165,10 @@ class TestAddOperation(unittest.TestCase):
                 content.schema_.ref, '#/components/schemas/ErrorModel'
             )
 
-        marker = api.OpenAPIMethodInfo.extract(handler.post)
+        rule = tornado.routing.URLSpec(r'/test', DecoratedHandler)
+        marker = api.OpenAPIMethodInfo.extract(DecoratedHandler.post)
         with unittest.mock.patch.object(marker, 'errors', test_data):
-            self.doc.add_operation('POST', rule, handler.post)
+            self.doc.add_operation('POST', rule, DecoratedHandler.post)
             operation = self.doc.get_operation(rule, 'POST')
 
             assert_error_response(operation, 400, 'Bad Request')
@@ -180,11 +185,7 @@ class TestAddOperation(unittest.TestCase):
             async def get(self, item_id: int) -> ResponseModel:
                 return ResponseModel(id=item_id, name='test')
 
-        handler = Handler()
-        rule = tornado.routing.URLSpec(r'/(?P<item_id>.*)', Handler)
-        self.doc.add_operation('GET', rule, handler.get)
-
-        operation = self.doc.get_operation(rule, 'GET')
+        operation = self.add_operation(r'/(?P<item_id>.*)', 'GET', Handler)
         self.assertIsNone(operation.responses.get('404'))
 
         self.doc.set_default_error_model(404, ErrorModel)
