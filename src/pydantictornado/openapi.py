@@ -1,5 +1,6 @@
 import collections
 import http.client
+import logging
 import re
 import secrets
 import string
@@ -38,8 +39,12 @@ class ParsedUrlPath:
 
 class OpenAPIDocument:
     def __init__(self) -> None:
+        self.logger = logging.getLogger(__package__).getChild(
+            self.__class__.__name__
+        )
         self.openapi_doc = models.OpenAPI()
         self.__model_map: dict[type[pydantic.BaseModel], models.Reference] = {}
+        self.__marker_map: dict[str, api.OpenAPIMethodInfo] = {}
         self.__defaulted_errors: dict[
             int, list[tuple[models.Operation, api.ErrorResponseDefinition]]
         ]
@@ -49,7 +54,7 @@ class OpenAPIDocument:
     def render(self) -> dict[str, object]:
         return self.openapi_doc.model_dump(by_alias=True)
 
-    def add_operation(  # noqa: C901, PLR0912
+    def add_operation(  # noqa: C901, PLR0912, PLR0915
         self,
         http_method: str,
         rule: routing.URLSpec,
@@ -68,6 +73,7 @@ class OpenAPIDocument:
             'operation_id', _snake_case_operation_name(http_method, rule)
         )
         operation = models.Operation(**operation_attrs)
+        self.__marker_map[operation.operation_id] = marker
 
         if (request_body := marker.request_body) is not None:
             ref = self._add_model(request_body.type)
@@ -91,6 +97,7 @@ class OpenAPIDocument:
                 description=description,
                 content={'application/json': models.Content(schema=ref)},
             )
+
         for status_code, defn in marker.errors.items():
             if model := defn.get('model'):
                 ref = self._add_model(model)
@@ -108,6 +115,43 @@ class OpenAPIDocument:
                 ),
                 content={'application/json': models.Content(schema=ref)},
             )
+
+        for name, header_def in marker.headers.items():
+            schema_or_ref: models.Schema | models.Reference
+            if model := header_def.get('model'):
+                schema_or_ref = self._add_model(model)
+            else:
+                schema_or_ref = models.Schema.model_validate(
+                    {
+                        'type': 'string',
+                    }
+                )
+            header = models.ResponseHeader.model_validate(
+                {'schema': schema_or_ref, **header_def}
+            )
+            status_codes: list[str]
+            if code_or_list := header_def.get('for_status'):
+                if isinstance(code_or_list, int):
+                    status_codes = [str(code_or_list)]
+                else:
+                    status_codes = [str(code) for code in code_or_list]
+            else:
+                status_codes = list(operation.responses.keys())
+
+            self.logger.debug(
+                'Adding header %s to status codes %r',
+                name,
+                status_codes,
+            )
+            for code in status_codes:
+                try:
+                    response = operation.responses[code]
+                except KeyError:
+                    response = models.Response()
+                    operation.responses[code] = response
+                if response.headers is None:
+                    response.headers = {}
+                response.headers[name] = header
 
         working = rule.regex.pattern.removesuffix('$')
         parsed = _generate_openapi_path(working)
@@ -209,6 +253,11 @@ class OpenAPIDocument:
         *,
         description: str | None = None,
     ) -> None:
+        self.logger.debug(
+            'Setting default error model for %s to %s',
+            status_code,
+            model.__name__,
+        )
         ref = self._add_model(model)
         description = (
             f'Unknown HTTP {status_code}'
@@ -216,10 +265,40 @@ class OpenAPIDocument:
             else description
         )
         for operation, defn in self.__defaulted_errors[status_code]:
-            operation.responses[str(status_code)] = models.Response(
+            response = models.Response(
                 description=defn.get('description', description),
                 content={'application/json': models.Content(schema=ref)},
             )
+            operation.responses[str(status_code)] = response
+            marker = self.__marker_map[operation.operation_id]
+            for name, header_def in marker.headers.items():
+                status_codes: list[str]
+                if code_or_list := header_def.get('for_status'):
+                    if isinstance(code_or_list, int):
+                        status_codes = [str(code_or_list)]
+                    else:
+                        status_codes = [str(code) for code in code_or_list]
+                else:
+                    status_codes = list(operation.responses.keys())
+                if str(status_code) not in status_codes:
+                    continue
+
+                schema_or_ref: models.Schema | models.Reference
+                if header_model := header_def.get('model'):
+                    schema_or_ref = self._add_model(header_model)
+                else:
+                    schema_or_ref = models.Schema.model_validate(
+                        {
+                            'type': 'string',
+                        }
+                    )
+                header = models.ResponseHeader.model_validate(
+                    {'schema': schema_or_ref, **header_def}
+                )
+                if response.headers is None:
+                    response.headers = {}
+                response.headers[name] = header
+
         self.__defaulted_errors.pop(status_code)
         self.__default_errors[status_code] = ref
 

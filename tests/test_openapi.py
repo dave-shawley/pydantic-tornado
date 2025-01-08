@@ -6,6 +6,7 @@ import tornado.httputil
 import tornado.routing
 import tornado.web
 
+import tests
 from pydantictornado import api, errors, models, openapi
 
 
@@ -50,7 +51,14 @@ class DecoratedHandler(AutoInitializingHandler):
         return ResponseModel(id=42, name=body.name)
 
 
-class AddOperationTest(unittest.TestCase):
+class CorrelationID(pydantic.RootModel[str]):
+    root: str = pydantic.Field(
+        alias='correlation-id',
+        pattern='[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}',
+    )
+
+
+class AddOperationTest(tests.TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.doc = openapi.OpenAPIDocument()
@@ -181,6 +189,49 @@ class TestAddOperation(AddOperationTest):
 
         self.doc.set_default_error_model(404, ErrorModel)
         self.assertIsNotNone(operation.responses.get('404'))
+
+    def test_add_response_headers(self) -> None:
+        class Handler(AutoInitializingHandler):
+            @api.expose_operation(default_status=201)
+            @api.add_error_response(500)
+            @api.add_response_header('correlation-id', model=CorrelationID)
+            @api.add_response_header('location', for_status=201)
+            @api.add_response_header('retry-after', for_status=[500, 503])
+            async def post(
+                self, *, body: typing.Annotated[RequestModel, api.Body]
+            ) -> ResponseModel:
+                return ResponseModel(id=42, name=body.name)
+
+        operation = self.add_operation('/items', 'POST', Handler)
+        self.doc.set_default_error_model(500, ErrorModel)
+
+        self.assertEqual(
+            self.doc.openapi_doc.components.schemas['CorrelationID'],
+            models.Schema.model_validate(
+                CorrelationID.model_json_schema(mode='serialization')
+            ),
+            'CorrelationID schema should be added to components.schemas',
+        )
+
+        response = self.unwrap(operation.responses.get('201'))
+        headers = self.unwrap(response.headers)
+        self.assertIn('correlation-id', headers)
+        self.assertIn('location', headers)
+        self.assertNotIn(
+            'retry-after',
+            headers,
+            'Retry-After header should not be present for 201 response',
+        )
+
+        response = self.unwrap(operation.responses.get('500'))
+        headers = self.unwrap(response.headers)
+        self.assertIn('correlation-id', headers)
+        self.assertNotIn(
+            'location',
+            headers,
+            'Location header should only be present for 201 response',
+        )
+        self.assertIn('retry-after', headers)
 
 
 class AddModelTests(unittest.TestCase):

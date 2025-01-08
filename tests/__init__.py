@@ -8,8 +8,20 @@ from tornado import httpclient, httpserver, testing, web
 ApplicationType = typing.TypeVar('ApplicationType', bound=web.Application)
 
 
+class TestCase(unittest.TestCase):
+    @typing.overload
+    def unwrap[T](self, obj: T | None) -> T: ...
+
+    @typing.overload
+    def unwrap[T](self, obj: object, _cast_to: type[T]) -> T: ...
+
+    def unwrap[T](self, obj: object, _cast_to: type[T] | None = None) -> T:
+        self.assertIsNotNone(obj)
+        return typing.cast(T, obj)
+
+
 class AsyncTestCase(
-    unittest.IsolatedAsyncioTestCase, typing.Generic[ApplicationType]
+    TestCase, unittest.IsolatedAsyncioTestCase, typing.Generic[ApplicationType]
 ):
     async def asyncSetUp(self) -> None:
         await super().asyncSetUp()
@@ -39,7 +51,3 @@ class AsyncTestCase(
         return urllib.parse.urljoin(
             f'http://{self.server_address}:{self.server_port}/', path
         )
-
-    def unwrap[T](self, obj: object, _cast_to: type[T]) -> T:
-        self.assertIsNotNone(obj)
-        return typing.cast(T, obj)

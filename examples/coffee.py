@@ -296,13 +296,23 @@ class RequestHandler(handlers.PydanticErrorHandler):
 
 class CreateOrderHandler(RequestHandler):
     @api.expose_operation(default_status=201, summary='Create a new order')
+    @api.add_response_header(
+        'Location',
+        description='Canonical URL of the new order',
+        required=True,
+        for_status=201,
+    )
     @api.add_error_response(422, description='Body validation error')
     async def post(
         self,
         body: typing.Annotated[Order, api.Body(description='Order details')],
     ) -> ActiveOrder:
         self.logger.info('doin the thing with %s', body)
-        return self.application.create_order(body)
+        order = self.application.create_order(body)
+        self.set_header(
+            'location', self.reverse_url('order_handler', order.order_id)
+        )
+        return order
 
 
 class OrderHandler(RequestHandler):

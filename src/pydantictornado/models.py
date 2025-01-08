@@ -164,9 +164,18 @@ class Content(FieldOmittingMixin, pydantic.BaseModel):
     schema_: Schema | Reference = pydantic.Field(..., alias='schema')
 
 
+class ResponseHeader(FieldOmittingMixin, pydantic.BaseModel):
+    description: str | None = None
+    required: bool = False
+    deprecated: bool = False
+    style: typing.Literal['simple'] = 'simple'
+    explode: bool = False
+    schema_: Schema | Reference = pydantic.Field(..., alias='schema')
+
+
 class Response(FieldOmittingMixin, pydantic.BaseModel):
     description: str = ''
-    headers: dict[str, Schema | Reference] | None = None
+    headers: dict[str, ResponseHeader | Reference] | None = None
     content: dict[str, Content] | None = None
     links: dict[str, typing.Union['Link', Reference]] | None = None
 
@@ -184,9 +193,7 @@ class Operation(FieldOmittingMixin, pydantic.BaseModel):
     external_docs: ExternalDocumentation | None = pydantic.Field(
         None, serialization_alias='externalDocs'
     )
-    operation_id: str | None = pydantic.Field(
-        None, serialization_alias='operationId'
-    )
+    operation_id: str = pydantic.Field(serialization_alias='operationId')
     parameters: list[Parameter | Reference] | None = pydantic.Field(
         default_factory=list[Parameter | Reference]
     )

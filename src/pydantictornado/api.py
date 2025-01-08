@@ -263,6 +263,35 @@ def add_error_response(
     return wrapper
 
 
+class ResponseHeaderDefinition(typing.TypedDict):
+    description: typing.NotRequired[str | None]
+    model: typing.NotRequired[type[pydantic.BaseModel] | None]
+    required: typing.NotRequired[bool]
+    explode: typing.NotRequired[bool]
+    deprecated: typing.NotRequired[bool]
+    for_status: typing.NotRequired[list[int] | int]
+
+
+def add_response_header(
+    name: str, **kwargs: typing.Unpack[ResponseHeaderDefinition]
+) -> typing.Callable[
+    [typing.Callable[..., typing.Awaitable[ModelType | None]]],
+    typing.Callable[..., typing.Awaitable[ModelType | None]],
+]:
+    def wrapper(
+        func: typing.Callable[..., typing.Awaitable[ModelType | None]],
+    ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
+        try:
+            marker = OpenAPIMethodInfo.extract(func)
+        except errors.MarkerNotFoundError:
+            marker = OpenAPIMethodInfo()
+            marker.attach(func)
+        marker.headers[name] = kwargs
+        return func
+
+    return wrapper
+
+
 def _convert_parameter_value(
     param_def: inspect.Parameter, value: str
 ) -> str | int | bool | float | None:
@@ -314,6 +343,7 @@ class OpenAPIMethodInfo:
         self.response_type = response_type
         self.parameters: dict[str, inspect.Parameter] = {}
         self.errors: dict[int, ErrorResponseDefinition] = {}
+        self.headers: dict[str, ResponseHeaderDefinition] = {}
         self.extra: dict[str, object | str | int | bool | None | list[str]]
         self.extra = {}
 
@@ -355,6 +385,7 @@ class OpenAPIMethodInfo:
             not bool(self.parameters)
             and not bool(self.errors)
             and not bool(self.extra)
+            and not bool(self.headers)
             and self._body_parameter_info is None
         )
 
