@@ -290,8 +290,10 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         self.tag_operation('order_handler', 'PUT', order_management)
         self.tag_operation('payment_handler', 'PUT', order_management)
         self.register_error_model(400, BadRequestErrorResponse)
-        self.register_error_model(404, NotFoundErrorResponse)
         self.register_error_model(422, openapi.ValidationError)
+        self.add_global_error(
+            404, NotFoundErrorResponse, description='Order not found'
+        )
 
     def create_order(self, order: Order) -> ActiveOrder:
         active_order = super().create_order(order)
@@ -339,6 +341,7 @@ class CreateOrderHandler(RequestHandler):
         required=True,
         for_status=201,
     )
+    @api.add_error_response(404, description='Not Found')
     @api.add_error_response(422, description='Body validation error')
     async def post(
         self,
@@ -354,7 +357,6 @@ class CreateOrderHandler(RequestHandler):
 
 class OrderHandler(RequestHandler):
     @api.expose_operation(summary='Retrieve order details')
-    @api.add_error_response(404, description='Order not found')
     async def get(self, order_id: int) -> ActiveOrder:
         self.logger.info('fetching %r', order_id)
         try:
@@ -366,7 +368,6 @@ class OrderHandler(RequestHandler):
     @api.add_error_response(
         400, description='Order item not found', model=InvalidItemErrorResponse
     )
-    @api.add_error_response(404, description='Order not found')
     @api.add_error_response(422, description='Body validation error')
     async def put(
         self,
@@ -408,7 +409,6 @@ class PaymentHandler(RequestHandler):
     @api.expose_operation(
         summary='Pay for an order', default_status=http.HTTPStatus.ACCEPTED
     )
-    @api.add_error_response(404, description='Order not found')
     @api.add_error_response(
         409, model=OrderAlreadyPaidResponse, description='Order already paid'
     )

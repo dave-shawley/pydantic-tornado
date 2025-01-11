@@ -393,3 +393,38 @@ class GetOperationTests(unittest.TestCase):
             self.doc.get_operation(rule, 'POST')
         self.assertEqual(context.exception.http_method, 'POST')
         self.assertEqual(context.exception.path_expression, '/{item_id}')
+
+
+class GlobalErrorTests(tests.TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.doc = openapi.OpenAPIDocument()
+
+    def test_add_global_error_with_path_details(self) -> None:
+        self.doc.add_operation(
+            'GET',
+            tornado.routing.URLSpec(r'/test/(?P<item_id>)', DecoratedHandler),
+            DecoratedHandler.get,
+        )
+        path_item = self.doc.openapi_doc.paths['/test/{item_id}']
+        path_item.summary = 'Cannot be set by a decorator... yet'
+
+        self.doc.add_global_error(500, ErrorModel)
+        self.assertIn('500', self.unwrap(path_item.get).responses)
+
+    def test_add_operation_replacing_global_error(self) -> None:
+        class Handler(AutoInitializingHandler):
+            @api.expose_operation
+            @api.add_error_response(500, description='Replaces global error')
+            async def get(self) -> None:
+                pass
+
+        self.doc.add_global_error(500, ErrorModel)
+        self.doc.add_operation(
+            'GET',
+            tornado.routing.URLSpec(r'/test', Handler),
+            Handler.get,
+        )
+        path_item = self.doc.openapi_doc.paths['/test']
+        response = self.unwrap(path_item.get).responses['500']
+        self.assertEqual(response.description, 'Replaces global error')

@@ -97,6 +97,17 @@ class OpenAPIApplication(ResponseFormatter, web.Application):
         self._process_rules(host_handlers)
         super().add_handlers(host_pattern, host_handlers)
 
+    def add_global_error(
+        self,
+        status_code: int,
+        error_model: type[pydantic.BaseModel],
+        *,
+        description: str | None = None,
+    ) -> None:
+        self.openapi_doc.add_global_error(
+            status_code, error_model, description=description
+        )
+
     def tag_operation(
         self, rule_name: str, method: str, *tags: str | models.Tag
     ) -> None:

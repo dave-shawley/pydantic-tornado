@@ -204,6 +204,9 @@ class Application(handlers.OpenAPIApplication):
             **settings,
         )
 
+        self.add_global_error(
+            http.HTTPStatus.INTERNAL_SERVER_ERROR, ErrorModel
+        )
         self.register_error_model(http.HTTPStatus.CONFLICT, ErrorModel)
 
         # The following tests adding a handler explicitly *after* setting
@@ -267,6 +270,22 @@ class TestOpenAPIApplication(tests.AsyncTestCase[Application]):
             '#/components/schemas/ErrorModel',
         )
         self.assertIn('ErrorModel', data['components']['schemas'])
+
+        for path, path_info in data['paths'].items():
+            for method, operation in path_info.items():
+                if operation not in ('delete', 'get', 'post', 'patch', 'put'):
+                    continue
+
+                self.assertIn(
+                    'responses',
+                    operation,
+                    f'Missing responses for {path} {method}',
+                )
+                self.assertIn(
+                    '500',
+                    operation['responses'],
+                    f'Missing 500 response for {path} {method}',
+                )
 
     async def test_openapi_unnamed_parameters(self) -> None:
         data = self.app.openapi_doc.render()

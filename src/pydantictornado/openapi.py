@@ -49,10 +49,39 @@ class OpenAPIDocument:
             int, list[tuple[models.Operation, api.ErrorResponseDefinition]]
         ]
         self.__defaulted_errors = collections.defaultdict(list)
-        self.__default_errors: dict[int, models.Reference] = {}
+        self.__default_error_models: dict[int, models.Reference] = {}
+        self.__global_status_codes: set[int] = set()
 
     def render(self) -> dict[str, object]:
         return self.openapi_doc.model_dump(by_alias=True)
+
+    def add_global_error(
+        self,
+        status_code: int,
+        model: type[pydantic.BaseModel],
+        *,
+        description: str | None = None,
+    ) -> None:
+        self.__global_status_codes.add(status_code)
+        model_ref = self.set_default_error_model(
+            status_code, model, description=description
+        )
+        content = models.Content(schema=model_ref)
+        description = description or http.client.responses.get(
+            status_code, f'Unknown HTTP {status_code}'
+        )
+
+        for path in self.openapi_doc.paths.values():
+            for field_name in path.model_fields_set:
+                operation = getattr(path, field_name)
+                if isinstance(operation, models.Operation):
+                    operation.responses.setdefault(
+                        str(status_code),
+                        models.Response(
+                            description=description,
+                            content={'application/json': content},
+                        ),
+                    )
 
     def add_operation(  # noqa: C901, PLR0912, PLR0915
         self,
@@ -101,7 +130,7 @@ class OpenAPIDocument:
         for status_code, defn in marker.errors.items():
             if model := defn.get('model'):
                 ref = self._add_model(model)
-            elif default := self.__default_errors.get(status_code):
+            elif default := self.__default_error_models.get(status_code):
                 ref = default
             else:
                 self.__defaulted_errors[status_code].append((operation, defn))
@@ -114,6 +143,17 @@ class OpenAPIDocument:
                     ),
                 ),
                 content={'application/json': models.Content(schema=ref)},
+            )
+
+        for status_code in self.__global_status_codes:
+            if str(status_code) in operation.responses:
+                continue
+            default = self.__default_error_models[status_code]
+            operation.responses[str(status_code)] = models.Response(
+                description=http.client.responses.get(
+                    status_code, f'Unknown HTTP {status_code}'
+                ),
+                content={'application/json': models.Content(schema=default)},
             )
 
         for name, header_def in marker.headers.items():
@@ -252,7 +292,7 @@ class OpenAPIDocument:
         model: type[pydantic.BaseModel],
         *,
         description: str | None = None,
-    ) -> None:
+    ) -> models.Reference:
         self.logger.debug(
             'Setting default error model for %s to %s',
             status_code,
@@ -300,7 +340,9 @@ class OpenAPIDocument:
                 response.headers[name] = header
 
         self.__defaulted_errors.pop(status_code)
-        self.__default_errors[status_code] = ref
+        self.__default_error_models[status_code] = ref
+
+        return ref
 
     def _add_model(self, model: type[pydantic.BaseModel]) -> models.Reference:
         try:
