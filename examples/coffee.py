@@ -43,6 +43,11 @@ class InvalidItemErrorResponse(BadRequestErrorResponse):
         )
 
 
+class OrderAlreadyPaidResponse(ErrorResponse):
+    status: int = 409
+    title: str = 'Order Already Paid'
+
+
 class NotFoundErrorResponse(ErrorResponse):
     status: int = 404
     title: str = 'Not Found'
@@ -128,6 +133,7 @@ class HttpMethod(enum.StrEnum):
 
 class OrderActionName(enum.StrEnum):
     CREATE_ORDER = 'create_order'
+    PAY = 'pay'
     UPDATE_ORDER = 'update_order'
 
 
@@ -139,6 +145,7 @@ class OrderAction(pydantic.BaseModel):
 
 class ActiveOrder(pydantic.BaseModel):
     order_id: int
+    state: typing.Literal['open', 'paid', 'fulfilled'] = 'open'
     items: list[Item] = pydantic.Field(default_factory=list)
     actions: dict[str, OrderAction] = pydantic.Field(default_factory=dict)
 
@@ -152,6 +159,9 @@ class ActiveOrder(pydantic.BaseModel):
                 'href': href,
             }
         )
+
+    def remove_action(self, name: OrderActionName) -> None:
+        self.actions.pop(name, None)
 
     @pydantic.computed_field  # type: ignore[prop-decorator]
     @property
@@ -184,6 +194,13 @@ class OrderUpdateRequest(pydantic.RootModel[list[OrderUpdate]]):
 
     def __getitem__(self, item: int) -> OrderUpdate:
         return self.root[item]
+
+
+class Payment(pydantic.BaseModel):
+    card_number: str = pydantic.Field(alias='cardNo')
+    expires: str = pydantic.Field(pattern=r'^\d{2}/\d{2}$')
+    name: str
+    amount: float
 
 
 MENU: dict[DrinkType, dict[DrinkSize, float]] = {
@@ -232,6 +249,15 @@ class OrderManager:
         )
         return active_order
 
+    def get_order(self, order_id: int) -> ActiveOrder | None:
+        return self.orders.get(order_id, None)
+
+    def pay_for_order(self, order: ActiveOrder, payment: Payment) -> Payment:
+        order.state = 'paid'
+        order.remove_action(OrderActionName.UPDATE_ORDER)
+        order.remove_action(OrderActionName.PAY)
+        return payment
+
     @property
     def menu(self) -> abc.Mapping[DrinkType, abc.Mapping[DrinkSize, float]]:
         return MENU
@@ -247,6 +273,11 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
             routing.URLSpec(
                 '/orders/(?P<order_id>.*)', OrderHandler, name='order_handler'
             ),
+            routing.URLSpec(
+                '/payments/order/(?P<order_id>.*)',
+                PaymentHandler,
+                name='payment_handler',
+            ),
             routing.URLSpec('/openapi.json', handlers.OpenAPISpecHandler),
         ]
         super().__init__(routes, **kwargs)
@@ -257,6 +288,7 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
         self.tag_operation('create_order', 'POST', order_management)
         self.tag_operation('order_handler', 'GET', order_management)
         self.tag_operation('order_handler', 'PUT', order_management)
+        self.tag_operation('payment_handler', 'PUT', order_management)
         self.register_error_model(400, BadRequestErrorResponse)
         self.register_error_model(404, NotFoundErrorResponse)
         self.register_error_model(422, openapi.ValidationError)
@@ -267,6 +299,11 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
             OrderActionName.UPDATE_ORDER,
             HttpMethod.PUT,
             self.reverse_url('order_handler', active_order.order_id),
+        )
+        active_order.add_action(
+            OrderActionName.PAY,
+            HttpMethod.PUT,
+            self.reverse_url('payment_handler', active_order.order_id),
         )
         return active_order
 
@@ -364,6 +401,28 @@ class OrderHandler(RequestHandler):
                 else:
                     typing.assert_never(update)
 
+        return order
+
+
+class PaymentHandler(RequestHandler):
+    @api.expose_operation(
+        summary='Pay for an order', default_status=http.HTTPStatus.ACCEPTED
+    )
+    @api.add_error_response(404, description='Order not found')
+    @api.add_error_response(
+        409, model=OrderAlreadyPaidResponse, description='Order already paid'
+    )
+    async def put(
+        self, order_id: int, /, body: typing.Annotated[Payment, api.Body]
+    ) -> ActiveOrder:
+        order = self.application.get_order(order_id)
+        if order is None:
+            raise api.StructuredError(404, NotFoundErrorResponse())
+        if order.state != 'open':
+            raise api.StructuredError(409, OrderAlreadyPaidResponse())
+
+        self.set_status(http.HTTPStatus.ACCEPTED, reason='Payment Accepted')
+        self.application.pay_for_order(order, body)
         return order
 
 
