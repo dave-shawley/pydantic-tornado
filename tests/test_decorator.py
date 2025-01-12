@@ -71,6 +71,9 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(marker.parameters['name'].annotation, str)
 
     def test_body_parameter_detection(self) -> None:
+        class DerivedModel(api.Body, Model):
+            pass
+
         class Handler(web.RequestHandler):
             @api.expose_operation
             async def post(
@@ -78,9 +81,17 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             ) -> None:
                 pass
 
+            @api.expose_operation
+            async def put(self, *, replacement: DerivedModel) -> None:
+                pass
+
         marker = self.extract_marker(Handler.post)
         self.assertEqual(marker.request_body.name, 'body')
         self.assertEqual(marker.request_body.type, Model)
+
+        marker = self.extract_marker(Handler.put)
+        self.assertEqual(marker.request_body.name, 'replacement')
+        self.assertEqual(marker.request_body.type, DerivedModel)
 
     def test_that_extra_annotations_are_ignored(self) -> None:
         class Handler(web.RequestHandler):

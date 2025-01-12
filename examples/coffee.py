@@ -188,7 +188,7 @@ class RemoveItemFromOrder(pydantic.BaseModel):
 OrderUpdate = AddItemToOrder | RemoveItemFromOrder | UpdateOrderItem
 
 
-class OrderUpdateRequest(pydantic.RootModel[list[OrderUpdate]]):
+class OrderUpdateRequest(api.Body, pydantic.RootModel[list[OrderUpdate]]):
     def __iter__(self) -> abc.Iterator[OrderUpdate]:  # type: ignore[override]
         return iter(self.root)
 
@@ -196,7 +196,7 @@ class OrderUpdateRequest(pydantic.RootModel[list[OrderUpdate]]):
         return self.root[item]
 
 
-class Payment(pydantic.BaseModel):
+class Payment(api.Body, pydantic.BaseModel):
     card_number: str = pydantic.Field(alias='cardNo')
     expires: str = pydantic.Field(pattern=r'^\d{2}/\d{2}$')
     name: str
@@ -370,10 +370,7 @@ class OrderHandler(RequestHandler):
     )
     @api.add_error_response(422, description='Body validation error')
     async def put(
-        self,
-        order_id: int,
-        *,
-        body: typing.Annotated[OrderUpdateRequest, api.Body],
+        self, order_id: int, *, body: OrderUpdateRequest
     ) -> ActiveOrder:
         try:
             order = self.application.orders[order_id]
@@ -412,9 +409,7 @@ class PaymentHandler(RequestHandler):
     @api.add_error_response(
         409, model=OrderAlreadyPaidResponse, description='Order already paid'
     )
-    async def put(
-        self, order_id: int, /, body: typing.Annotated[Payment, api.Body]
-    ) -> ActiveOrder:
+    async def put(self, order_id: int, /, body: Payment) -> ActiveOrder:
         order = self.application.get_order(order_id)
         if order is None:
             raise api.StructuredError(404, NotFoundErrorResponse())
