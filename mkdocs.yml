@@ -11,6 +11,8 @@ validation:
 theme:
   name: material
   features:
+    - content.code.annotate
+    - content.code.copy
     - navigation.indexes
     - navigation.instant
     - navigation.tabs
@@ -40,6 +42,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.smartsymbols
   - pymdownx.superfences
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - toc:
       permalink: true
       toc_depth: 3

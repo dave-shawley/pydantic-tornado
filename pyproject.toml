@@ -66,6 +66,8 @@ python = "python3.12"
 
 [tool.hatch.envs.default.scripts]
 github-pages = ["mkdocs gh-deploy --force"]
+serve-docs = ["mkdocs serve"]
+serve-example = ["python examples/coffee.py"]
 test = [
   "pre-commit run --all-files",
   "mypy -p pydantictornado -p tests -p examples",
