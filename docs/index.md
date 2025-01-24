@@ -34,8 +34,10 @@ class Application(handlers.OpenAPIApplication, tornado.web.Application):
     def __init__(self, **settings: object) -> None:
         super().__init__(
             [
-                tornado.web.url('/docs', handlers.OpenAPIDocHandler),
-                tornado.web.url('/openapi.json', handlers.OpenAPISpecHandler),
+                tornado.web.url('/docs', handlers.OpenAPIDocHandler,
+                                {'spec_handler_name': 'openapi_spec'}),
+                tornado.web.url('/openapi.json', handlers.OpenAPISpecHandler,
+                                name='openapi_spec'),
                 tornado.web.url(
                     '/items', CollectionHandler, name='create_item'
                 ),

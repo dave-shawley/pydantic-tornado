@@ -266,7 +266,11 @@ class OrderManager:
 class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
     def __init__(self, **kwargs: object) -> None:
         routes: list[routing.Rule] = [
-            routing.URLSpec('/docs', handlers.OpenAPIDocHandler),
+            routing.URLSpec(
+                '/docs',
+                handlers.OpenAPIDocHandler,
+                kwargs={'spec_handler_name': 'openapi_spec'},
+            ),
             routing.URLSpec(
                 '/orders', CreateOrderHandler, name='create_order'
             ),
@@ -278,7 +282,11 @@ class Application(handlers.OpenAPIApplication, OrderManager, web.Application):
                 PaymentHandler,
                 name='payment_handler',
             ),
-            routing.URLSpec('/openapi.json', handlers.OpenAPISpecHandler),
+            routing.URLSpec(
+                '/openapi.json',
+                handlers.OpenAPISpecHandler,
+                name='openapi_spec',
+            ),
         ]
         super().__init__(routes, **kwargs)
 

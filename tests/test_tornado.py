@@ -8,6 +8,7 @@ import unittest.mock
 import pydantic
 import tornado.httputil
 import tornado.routing
+import tornado.template
 import tornado.web
 
 import tests
@@ -379,7 +380,16 @@ class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):
     def create_app() -> tornado.web.Application:
         return tornado.web.Application(
             [
-                tornado.web.url(r'/docs', handlers.OpenAPIDocHandler),
+                tornado.web.url(
+                    r'/openapi.json',
+                    handlers.OpenAPISpecHandler,
+                    name='spec_handler',
+                ),
+                tornado.web.url(
+                    r'/docs',
+                    handlers.OpenAPIDocHandler,
+                    {'spec_handler_name': 'spec_handler'},
+                ),
             ]
         )
 
@@ -388,8 +398,13 @@ class TestOpenAPIDocHandler(tests.AsyncTestCase[tornado.web.Application]):
         self.assertEqual(rsp.code, 200)
         self.assertEqual(rsp.headers['content-type'], 'text/html')
         doc = importlib.resources.files('pydantictornado') / 'openapi.html'
-        content = doc.read_text(encoding='utf-8')
-        self.assertEqual(rsp.body.decode(), content)
+        template = tornado.template.Template(
+            doc.read_text(encoding='utf-8'), compress_whitespace=True
+        )
+        content = template.generate(
+            url_for=lambda _: '/openapi.json', spec_handler_name='spec_handler'
+        )
+        self.assertEqual(rsp.body, content)
 
     async def test_cache_control_header(self) -> None:
         rsp = await self.client.fetch(self.url('/docs'))

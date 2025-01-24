@@ -7,7 +7,7 @@ import typing
 from collections import abc
 
 import pydantic
-from tornado import httputil, routing, web
+from tornado import httputil, routing, template, web
 
 from pydantictornado import api, errors, models, openapi
 
@@ -184,21 +184,31 @@ class OpenAPISpecHandler(web.RequestHandler):
 
 class OpenAPIDocHandler(web.RequestHandler):
     application: OpenAPIApplication
-    _html_content: typing.ClassVar[str] = ''
-    _file_timestamp: typing.ClassVar[float] = 0.0
+    _html_content: typing.ClassVar[bytes] = b''
+
+    def initialize(self, *, spec_handler_name: str) -> None:
+        self._spec_handler_name = spec_handler_name
 
     def get(self) -> None:
         self.set_header('content-type', 'text/html')
         self.set_header('cache-control', 'public, max-age=3600')
         self.write(self.get_html_content())
 
-    @classmethod
-    def get_html_content(cls) -> str:
+    def get_html_content(self) -> bytes:
+        cls = self.__class__
         if not cls._html_content:
             path = (
                 importlib.resources.files('pydantictornado') / 'openapi.html'
             )
-            cls._html_content = path.read_text(encoding='utf-8')
+            t = template.Template(
+                path.read_text(encoding='utf-8'),
+                name=path.name,
+                compress_whitespace=True,
+            )
+            cls._html_content = t.generate(
+                spec_handler_name=self._spec_handler_name,
+                url_for=self.reverse_url,
+            )
         return cls._html_content
 
 

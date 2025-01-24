@@ -86,8 +86,8 @@ class Application(handlers.OpenAPIApplication):
         super().__init__([
             web.URLSpec(r'/items', ItemCreationHandler),
             web.URLSpec(r'/items/(?P<item_id>\d+)', ItemHandler),
-            web.URLSpec(r'/docs', handlers.OpenAPIDocHandler),
-            web.URLSpec(r'/openapi.json', handlers.OpenAPISpecHandler),
+            web.URLSpec(r'/docs', handlers.OpenAPIDocHandler, {'spec_handler_name': 'openapi_spec'}),
+            web.URLSpec(r'/openapi.json', handlers.OpenAPISpecHandler, name='openapi_spec'),
         ])
 ```
 
