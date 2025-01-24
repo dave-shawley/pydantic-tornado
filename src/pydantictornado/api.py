@@ -42,12 +42,41 @@ RequestMethod = typing.Callable[..., typing.Awaitable[None] | None]
 
 
 class ExplicitOpenAPIDocumentation(typing.TypedDict, total=False):
-    """Typed arguments for api.decorate."""
+    """Keyword arguments for [pydantictornado.api.expose_operation][].
+
+    This dictionary describes the optional keyword parameters to the
+    [api.expose_operation][pydantictornado.api.expose_operation] decorator.
+    They are used to populate the OpenAPI specification of the operation
+    with additional information.
+
+    """
 
     default_status: typing.NotRequired[int]
+    """The default status code is 200. This property allows you to override
+    the value that is used if your handler does not set an explicit status
+    code. This is commonly used for `DELETE` and `POST` operations where
+    you would use "204 No Content" or "303 See Other" instead of a 200.
+    """
+
     operation_id: typing.NotRequired[str]
+    """The default operation ID is generated from the request handler class
+    name and HTTP method name. Use this keyword parameter to set an explicit
+    operation ID.
+    """
+
     summary: typing.NotRequired[str]
+    """The default summary is the first line of the method's docstring or
+    the operation ID if no docstring is present. Use this keyword parameter
+    to explicitly set the summary.
+    """
+
+    description: typing.NotRequired[str]
+    """The default description is the remainder of the docstring after the
+    first line. Use this keyword parameter to explicitly set the
+    description."""
+
     tags: typing.NotRequired[list[str]]
+    """Set tags for the operation."""
 
 
 @typing.overload
@@ -86,7 +115,64 @@ def expose_operation(  # noqa: C901, PLR0915
         RequestMethod,
     ]
 ):
-    """Expose a request handling method."""
+    """
+    Exposes an operation to be used as an endpoint in an HTTP framework.
+
+    This decorator is used to expose a function as an HTTP endpoint in the
+    OpenAPI specification. The decorated method must be a coroutine that
+    receives the deserialized request body as a parameter and returns the
+    response as a Pydantic model instance. The decorator returns a wrapper
+    function that uses the standard Tornado RequestHandler signature.
+
+    When the wrapper method is invoked, it converts `request.body` to a
+    Pydantic model instance and passes it to the decorated method. Path
+    parameters are passed as positional arguments after being coerced to
+    the appropriate type. The return value from the method is serialized
+    as JSON and written to the response.
+
+    ```python
+    @api.expose_operation
+    async def post(
+        self, item_id: int, *,
+        body: typing.Annotated[CreataRequest, api.Body]
+    ) -> Item: ...
+    ```
+
+    The decorator takes care of the following tasks for you:
+
+    1. Extracts the request body from the request and converts it to a
+       `CreateRequest` instance. The body parameter is identified by
+       adding an [api.Body][pydantictornado.api.Body] annotation.
+    2. Converts the `item_id` path parameter from a string to an integer
+    3. Invokes the `post` method with the converted arguments
+    4. Converts the `Item` return value to a JSON string and writes it as
+       the response
+    5. Captures Pydantic errors and returns an appropriate response
+
+    In addition to transforming the request and response, the operation is
+    added to the OpenAPI specification based on how it is registered in the
+    application router. Additional OpenAPI properties can be supplied as
+    keyword arguments to the decorator. See [ExplicitOpenAPIDocumentation]
+    [pydantictornado.api.ExplicitOpenAPIDocumentation] for a list of supported
+    properties.
+
+    Raises:
+        TypeError: Raised when the provided arguments do not conform to the
+            expected types (e.g., non-callable or non-coroutine function passed
+            as the first argument).
+        errors.UnsupportedAnnotationError: Raised when an unsupported type is
+            provided for a parameter annotation, such as missing type
+            annotations or an unsupported special form.
+        errors.MarkerNotFoundError: Occurs when the OpenAPI marker is not found
+            on the provided function but additional OpenAPI metadata needs to
+            be attached.
+        errors.UnsupportedParameterError: Raised for unsupported parameter
+            kinds, such as VAR_POSITIONAL or VAR_KEYWORD, that do not satisfy
+            the expected signature.
+        errors.BodyValidationError: Occurs during request validation if the
+            body does not match the Pydantic model attribute's validation
+            rules.
+    """
     func_provided: (
         typing.Callable[..., typing.Awaitable[ModelType | None]] | None
     ) = None
@@ -258,8 +344,15 @@ def expose_operation(  # noqa: C901, PLR0915
 
 
 class ErrorResponseDefinition(typing.TypedDict):
+    """Keyword parameters to [pydantictornado.api.add_error_response][]."""
+
     model: typing.NotRequired[type[pydantic.BaseModel] | None]
+    """Model that describes the error response body This parameter
+    overrides the model registered by calling the `register_error_model`
+    method on the application instance."""
+
     description: typing.NotRequired[str | None]
+    """Description of this error response."""
 
 
 def add_error_response(
@@ -269,6 +362,29 @@ def add_error_response(
     [typing.Callable[..., typing.Awaitable[ModelType | None]]],
     typing.Callable[..., typing.Awaitable[ModelType | None]],
 ]:
+    """Document an error returned from an operation.
+
+    Stack this decorator with
+    [api.expose_operation][pydantictornado.api.expose_operation] to document
+    that an operation returns a specific status code. THe status code and
+    other parameters are added to the OpenAPI responses section for the
+    decorated operation.
+
+    This decorator works in conjunction with the [register_error_model]
+    [pydantictornado.handlers.OpenAPIApplication.register_error_model]
+    method of the application instance. You *should* bind the error model
+    and status code in the application instance when the same model is
+    used across many handlers. Including the `model` parameter in this
+    decorator is optional and will override any model registered in the
+    application instance.
+
+    Args:
+        status_code: The HTTP status code of the error response.
+        model: The Pydantic model that describes the error response body.
+        description: A description of the error response.
+
+    """
+
     def wrapper(
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
@@ -280,12 +396,32 @@ def add_error_response(
 
 
 class ResponseHeaderDefinition(typing.TypedDict):
+    """Keyword parameters to [pydantictornado.api.add_response_header][]."""
+
     description: typing.NotRequired[str | None]
+    """Description of the header."""
+
     model: typing.NotRequired[type[pydantic.BaseModel] | None]
+    """Model that describes the header value."""
+
     required: typing.NotRequired[bool]
+    """Is the header *always* returned?"""
+
     explode: typing.NotRequired[bool]
+    """Are multiple values be represented as separate parameters?
+
+    Note that the OpenAPI `style` property is *awlays* `simple` for
+    headers. The [style examples in OpenAPI 3.1](
+    https://spec.openapis.org/oas/v3.1.1.html#style-examples)
+    describe the result of using this parameter.
+    """
+
     deprecated: typing.NotRequired[bool]
+    """Is this header deprecated?"""
+
     for_status: typing.NotRequired[list[int] | int]
+    """Status codes for which this header is returned. If this parameter
+    is omitted, then the header is included for all status codes."""
 
 
 def add_response_header(
@@ -294,6 +430,28 @@ def add_response_header(
     [typing.Callable[..., typing.Awaitable[ModelType | None]]],
     typing.Callable[..., typing.Awaitable[ModelType | None]],
 ]:
+    """Describe a response header returned from a decorated operation.
+
+    This decorator adds a response header with the provided definition with
+    a decorated operation. Most of the parameters are copied as-is into the
+    OpenAPI specification. The `model` parameter should be included for complex
+    header definitions that have a specific structure.
+
+    The `for_status` parameter can be used to limit the header to specific
+    response status codes. If omitted, the header is included for all status
+    codes.
+
+    Args:
+        name: The name of the response header
+        description: A description of the header.
+        model: The Pydantic model that describes the header value.
+        required: Is the header *always* returned?
+        explode: Are multiple values be represented as separate parameters?
+        deprecated: Is this header deprecated?
+        for_status: Status codes for which this header is returned.
+
+    """
+
     def wrapper(
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
@@ -427,6 +585,29 @@ OpenAPIMethodInfo.EMPTY = _FrozenMethodInfo()
 
 
 class StructuredError[T: pydantic.BaseModel](web.HTTPError):
+    """An exception that includes a structured response body.
+
+    This class exists because the [pydantic.BaseModel][] class is not
+    compatible with the [Exception][] class. It whould be nice to raise
+    a model instance directly, but that is not possible. Instead, raise
+    an instance of this class with the response body as the `body` attribute.
+
+    ```python
+    class NotFoundError(pydantic.BaseModel):
+        message: str
+
+    class MyHandler(pydantictornado.handlers.PydanticErrorHandler,
+                    tornado.web.RequestHandler):
+        async def get(self) -> None:
+            raise api.StructuredError(404, NotFoundError(message='not found'))
+    ```
+
+    The `write_error` method in the [handlers.PydanticErrorHandler]
+    [pydantictornado.handlers.PydanticErrorHandler] class handles catching
+    and serializing structured exceptions.
+
+    """
+
     body: T
 
     def __init__(

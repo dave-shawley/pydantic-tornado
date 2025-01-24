@@ -101,11 +101,13 @@ class RequestHandler(handlers.PydanticErrorHandler, tornado.web.RequestHandler):
 class CollectionHandler(RequestHandler):
     @api.expose_operation(summary='Create a new Item', default_status=201) # (4)!
     @api.add_error_response(422) # (5)!
+    @api.add_response_header('location', for_status=201)
     async def post(
         self, *, body: typing.Annotated[CreationRequest, api.Body] # (6)!
     ) -> Item:
         new_item = Item(id=uuid.uuid4(), **body.model_dump(mode='python'))
         self.application.db[new_item.id] = new_item
+        self.set_header('location', self.reverse_url('item_handler', new_item.id))
         return new_item # (7)!
 
 
@@ -146,12 +148,13 @@ if __name__ == '__main__':
 ```
 
 1. This is where you configure the models that will be used to represent errors in the API. You can also register error
-   models using the `model` keyword parameter to [add_error_response](api.md#add_error_response). The
-   [register_error_model](api.md#register_error_model) method is more convenient when you have multiple endpoints that
-   use the same error model.
+   models using the `model` keyword parameter to [api.add_error_response][pydantictornado.api.add_error_response]. The
+   [register_error_model][pydantictornado.handlers.OpenAPIApplication.register_error_model] method is more convenient
+   when you have multiple endpoints that use the same error model.
 2. It is useful to categorize operations into OpenAPI tags. This makes it easier to navigate the documentation. You
-   create the OpenAPI tag by calling [add_tag](api.md#add_tag) on the `openapi_doc` attribute of the application. Then
-   the [tag_operation](api.md#tag_operation) method is used to associate an operation with a tag.
+   create the OpenAPI tag by calling [add_tag][pydantictornado.openapi.OpenAPIDocument.add_tag] on the `openapi_doc`
+   attribute of the application. Then the [tag_operation][pydantictornado.handlers.OpenAPIApplication.tag_operation]
+   method is used to associate an operation with a tag.
 3. This is an example of how to return a model-based error. This isn't my favorite part of the API, but it is required
    since [pydantic.BaseModel][] cannot be combined with [Exception][] in a class MRO :frown: I am look for an alternative
    syntax so this is likely to change in the future.
@@ -160,37 +163,39 @@ if __name__ == '__main__':
    other than `200 OK`. If you include a `default_status`, the library sets the response status for you. You can also
    specify the `operation_id` here if you want a specific value in the OpenAPI specification.
 5. Advertise that this method may return a 422. The description and response schema are configured in the Application
-   initializer with the [register_error_model](api.md#register_error_model) method. You can pass keyword parameters to
-   customize this behavior.
+   initializer with the [register_error_model][pydantictornado.handlers.OpenAPIApplication.register_error_model] method.
+   You can pass keyword parameters to customize this behavior.
 6. This is an example of how to use the `api.Body` type hint to indicate that the `body` parameter should be deserialized
    from the request body. The library takes care of deserializing the incoming JSON body to the Pydantic model. If it fails,
    then a library-provided response body is returned with a 422 response. The name of the parameter can be whatever you
-   want, but it must include [api.Body][] as an annotation *or* the type needs to be derived from [api.Body][].
+   want, but it must include [api.Body][pydantictornado.api.Body] as an annotation *or* the type needs to be derived from
+   [api.Body][pydantictornado.api.Body]. I'm not sure which one I prefer at this point.
 7. The return value of this method is serialized to JSON and returned to the client. The status code is set to 201 Created
-   because of the `default_status` parameter in the [expose_operation](api.md#expose_operation) decorator.
-8. This is a base class that combines the functionality of the [RequestHandler][] and [PydanticErrorHandler][] classes.
-   The [PydanticErrorHandler][] class is used to catch and serialize exceptions that are raised during request processing.
-   This is necessary because the library cannot raise Pydantic models as exceptions. The [RequestHandler][] class is
-   necessary because the library needs to access the application object to retrieve the error models and global errors.
+   because of the `default_status` parameter in the [api.expose_operation][pydantictornado.api.expose_operation] decorator.
+8. This is a base class that combines the functionality of the [tornado.web.RequestHandler][] and
+   [handlers.PydanticErrorHandler][pydantictornado.handlers.PydanticErrorHandler] classes. The `PydanticErrorHandler` class
+   is used to catch and serialize exceptions that are raised during request processing. This is necessary because the library
+   cannot raise Pydantic models as exceptions. The `RequestHandler` class is used for access to the standard tornado methods.
 
 I know that there is a lot there for a "simple" example, but let's look at how much this differs from a normal Tornado
 application. First, look at the `post` method of the `CollectionHandler`. Tornado request handling methods typically read
 request bodies from `self.request.body` and write responses with `self.write`. This method doesn't do that. Instead, it
 receives the request body as a parameter and returns the response body. The library takes care of the serialization
-details for you and does so in a type safe manner. The `expose_operation` decorator is where this magic happens. It examines
-the method signature to determine how to handle the request and response bodies. If a parameter is annotated with `api.Body`,
-then the request body is read, deserializaed, and passed to the method. Additional method parameters are coerced from strings
-to the declared types as well. If the return type is a Pydantic model, then the response is serialized and returned to the
-client.
+details for you and does so in a type safe manner. The [api.expose_operation][pydantictornado.api.expose_operation] decorator
+is where this magic happens. It examines the method signature to determine how to handle the request and response bodies.
+If a parameter is annotated with [api.Body][pydantictornado.api.Body], then the request body is read, deserialized, and
+passed to the method. Additional method parameters are coerced from strings to the declared types as well. If the return type
+is a Pydantic model, then the response is serialized and returned to the client.
 
 Exception handling is another area where this library differs from typical Tornado applications. In the `get_item` method,
-the `ItemNotFoundResponse` is raised when the item is not found. This is a subclass of `api.StructuredError` which is a
-wrapper that allows you to return a Pydantic model as the response body. This is necessary because Pydantic models cannot
-subclass `Exception` and be used in a `raise` statement. `StructuredError` is a generic form of the [tornado.web.HTTPError][]
-class that carries a Pydantic model as the response body. The `api.add_error_response` decorator is used to associate the
-model in the OpenAPI specification. It **is not** responsible for trasforming the exception into a response body. That is
-in the [PydanticErrorHandler][] class. Using a base class for request handlers that pulls together anything else that you
-need in every request handler is a pretty common pattern in Tornado applications.
+the `ItemNotFoundResponse` is raised when the item is not found. This is a subclass of [pydantictornado.api.StructuredError][]
+which is a wrapper that allows you to return a Pydantic model as the response body. This is necessary because Pydantic models
+cannot subclass [Exception][] and be used in a `raise` statement. `StructuredError` is a generic form of the [tornado.web.HTTPError][]
+class that carries a Pydantic model as the response body. The [api.add_error_response][pydantictornado.api.add_error_response]
+decorator is used to associate the model in the OpenAPI specification. It **is not** responsible for trasforming the exception
+into a response body. That is in the [pydantictornado.handlers.PydanticErrorHandler][] class. Using a base class for request
+handlers that pulls together anything else that you need in every request handler is a pretty common pattern in Tornado
+applications.
 
 Now let's look at what the OpenAPI documentation looks like. The following screenshot is for the `post` method that we
 discussed above.
@@ -199,14 +204,15 @@ discussed above.
 
 The request body schema is generated from the `CreationRequest` model. Similarly, the response body schema is generated from
 the `Item` model. The custom `ItemNotFoundResponse` model is used to describe the 404 response. The schema for
-[openapi.ValidationError][] is used to describe 422 responses. The `ErrorResponse` model is used for the 500 response. THe
-response section of the specification is created by combining the return type of the method with the error responses that
-are explicitly declared with the `add_error_response` decorator as well as the global errors that are declared in the
-Application initializer. Note that the 422 response is interesting because the `add_error_response` decorator only includes
-the status code. The description and response schema are configured in the Application initializer with the `register_error_model`
-method. You can pass keyword parameters to customize this behavior but placing the description in the decorator would require
-that it is included in *every* method decorator. The initialization approach defines the error model once and use it in multiple
-places which is a boon for maintainers.
+[pydantictornado.openapi.ValidationError][] is used to describe 422 responses. The `ErrorResponse` model is used for the 500
+response. The response section of the specification is created by combining the return type of the method with the error responses
+that are explicitly declared with the [api.add_error_response][pydantictornado.api.add_error_response] decorator as well as the
+global errors that are declared in the Application initializer. Note that the 422 response is interesting because the
+`add_error_response` decorator only includes the status code. The description and response schema are configured in the
+Application initializer with the [register_error_model][pydantictornado.handlers.OpenAPIApplication.register_error_model] method.
+You can pass keyword parameters to customize this behavior but placing the description in the decorator would require that it is
+included in *every* method decorator. The initialization approach defines the error model once and use it in multiple places which
+is a boon for maintainers.
 
 ## The Plan
 
@@ -215,6 +221,9 @@ So that is what is there now. Let's look at what I have planned for this library
 * [ ] Add support for query parameters via annotations
 * [ ] Add support for request headers via annotations
 * [ ] Add support for content negotiation for those of you that like msgpack
+* [ ] Add support for extending type coercion throughout the library. For example, path parameters are restricted to a
+      hardcoded set of types -- currently `str`, `int`, and `float` only. I would like to make this configurable and
+      **generalized** throughout the library.
 * [ ] Examine some alternatives for connecting response codes to error models. I would love to ensure that the response format
       matches the generated OpenAPI specification.
 * [ ] Add more support for customizing the OpenAPI specification.

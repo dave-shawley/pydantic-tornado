@@ -3,10 +3,14 @@ site_author: "Dave Shawley"
 repo_url: "https://githib.com/dave-shawley/pydantic-tornado"
 repo_name: "dave-shawley/pydantic-tornado"
 use_directory_urls: false
+
 validation:
   omitted_files: warn
   absolute_links: warn
   anchors: warn
+
+extra_css:
+  - css/mkdocstrings.css
 
 theme:
   name: material
@@ -15,6 +19,7 @@ theme:
     - content.code.copy
     - navigation.indexes
     - navigation.instant
+    - navigation.prune
     - navigation.tabs
     - navigation.top
     - toc.follow
@@ -36,7 +41,19 @@ theme:
         name: Switch to light mode
 nav:
   - index.md
+  - API Reference:
+      - api/index.md
+      - api/decorators.md
+      - api/annotations.md
+      - api/tornado.md
+      - api/openapi.md
+      - api/errors.md
+      - api/misc.md
+  - Rationale:
+      - rationale/annotated.md
+      - rationale/unpacking.md
   - changelog.md
+
 markdown_extensions:
   - admonition
   - pymdownx.details
@@ -44,6 +61,27 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tasklist:
       custom_checkbox: true
+  - sane_lists
   - toc:
       permalink: true
       toc_depth: 3
+
+plugins:
+  - autorefs
+  - mkdocstrings:
+      default_handler: python_xref
+      enable_inventory: true
+      handlers:
+        python_xref:
+          import:
+            - "https://docs.pydantic.dev/latest/objects.inv"
+            - "https://docs.python.org/3/objects.inv"
+            - "https://www.tornadoweb.org/en/stable/objects.inv"
+          options:
+            docstring_style: "google"
+            docstring_section_style: "list"
+            scoped_crossrefs: true
+            show_root_heading: true
+            show_signature: true
+            show_source: false
+  - search
