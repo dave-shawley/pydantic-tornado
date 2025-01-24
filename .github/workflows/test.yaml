@@ -1,7 +1,7 @@
 name: "lint, validate, and test"
 on:
   push:
-    branches: ["main"]
+    branches: ["decorator"]
 jobs:
   test:
     runs-on: ubuntu-latest
