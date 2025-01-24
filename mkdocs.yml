@@ -1,6 +1,6 @@
 site_name: "Pydantic Tornado"
 site_author: "Dave Shawley"
-repo_url: "https://githib.com/dave-shawley/pydantic-tornado"
+repo_url: "https://github.com/dave-shawley/pydantic-tornado"
 repo_name: "dave-shawley/pydantic-tornado"
 use_directory_urls: false
 
