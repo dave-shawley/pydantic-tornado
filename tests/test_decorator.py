@@ -262,3 +262,29 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         with unittest.mock.patch.object(handler, 'set_status') as set_status:
             await handler.post()  # type: ignore[misc]
             set_status.assert_called_once_with(201)
+
+    async def test_docstring_extraction(self) -> None:
+        class Handler(web.RequestHandler):
+            @api.expose_operation
+            async def post(self) -> None:
+                """Only a summary here."""
+
+            @api.expose_operation
+            async def get(self) -> None:
+                """This is the summary.
+
+                This is a more detailed description. It includes
+                multiple lines and preserves the formatting.
+                """
+
+        marker = self.extract_marker(Handler.post)
+        self.assertEqual(marker.extra['summary'], 'Only a summary here.')
+        self.assertNotIn('description', marker.extra)
+
+        marker = self.extract_marker(Handler.get)
+        self.assertEqual(marker.extra['summary'], 'This is the summary.')
+        self.assertEqual(
+            marker.extra['description'],
+            'This is a more detailed description. It includes\n'
+            'multiple lines and preserves the formatting.',
+        )

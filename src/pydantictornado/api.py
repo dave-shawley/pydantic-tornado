@@ -116,6 +116,15 @@ def expose_operation(  # noqa: C901, PLR0915
         except errors.MarkerNotFoundError:
             marker = OpenAPIMethodInfo()
 
+        if docstring := inspect.getdoc(func):
+            parts = docstring.splitlines()
+            kwargs.setdefault('summary', parts[0])
+            if len(parts) > 1:
+                kwargs.setdefault(
+                    'description',
+                    '\n'.join(parts[1 if parts[1].strip() else 2 :]),
+                )
+
         marker.extra.update(kwargs)
         body_cls: type[pydantic.BaseModel] | None = None
         body_param: inspect.Parameter | None = None

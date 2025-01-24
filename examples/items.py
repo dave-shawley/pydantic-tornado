@@ -79,11 +79,17 @@ class Item(CreationRequest, pydantic.BaseModel):
 class CollectionHandler(tornado.web.RequestHandler):
     application: Application
 
-    @api.expose_operation(summary='Create a new Item', default_status=201)
+    @api.expose_operation(default_status=201)
     @api.add_error_response(422)
     async def post(
         self, *, body: typing.Annotated[CreationRequest, api.Body]
     ) -> Item:
+        """Create a new item
+
+        Creates a new item based on the provided data and adds it to the
+        order collection with a unique ID. The result is the live order
+        including the assigned identifier.
+        """
         new_item = Item(id=uuid.uuid4(), **body.model_dump(mode='python'))
         self.application.db[new_item.id] = new_item
         return new_item
