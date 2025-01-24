@@ -263,11 +263,7 @@ def add_error_response(
     def wrapper(
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
-        try:
-            marker = OpenAPIMethodInfo.extract(func)
-        except errors.MarkerNotFoundError:
-            marker = OpenAPIMethodInfo()
-            marker.attach(func)
+        marker = OpenAPIMethodInfo.extract(func, create_if_missing=True)
         marker.errors[status_code] = kwargs
         return func
 
@@ -292,11 +288,7 @@ def add_response_header(
     def wrapper(
         func: typing.Callable[..., typing.Awaitable[ModelType | None]],
     ) -> typing.Callable[..., typing.Awaitable[ModelType | None]]:
-        try:
-            marker = OpenAPIMethodInfo.extract(func)
-        except errors.MarkerNotFoundError:
-            marker = OpenAPIMethodInfo()
-            marker.attach(func)
+        marker = OpenAPIMethodInfo.extract(func, create_if_missing=True)
         marker.headers[name] = kwargs
         return func
 
@@ -375,11 +367,17 @@ class OpenAPIMethodInfo:
         )
 
     @classmethod
-    def extract(cls, obj: object) -> 'OpenAPIMethodInfo':
+    def extract(
+        cls, obj: object, *, create_if_missing: bool = False
+    ) -> 'OpenAPIMethodInfo':
         """Extract the OpenAPIMethodInfo instance from request handler."""
         unspecified = object()
         marker = getattr(obj, '__pydantic_tornado_method__', unspecified)
         if marker is unspecified:
+            if create_if_missing:
+                marker = cls()
+                marker.attach(obj)
+                return marker
             raise errors.MarkerNotFoundError()
         if not isinstance(marker, OpenAPIMethodInfo):
             raise TypeError(
