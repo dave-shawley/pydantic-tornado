@@ -7,30 +7,34 @@ from tornado import web
 
 from pydantictornado import errors
 
-__all__ = [
-    'Body',
-    'ExplicitOpenAPIDocumentation',
-    'Marker',
-    'OpenAPIMethodInfo',
-    'expose_operation',
-]
-
 
 class Marker:
     """Base class for all annotations."""
 
 
+class RequestBodyDescription(typing.TypedDict):
+    """Keyword arguments for [pydantictornado.api.Body][]."""
+
+    description: typing.NotRequired[str | None]
+    """Description of the request body."""
+
+    required: typing.NotRequired[bool]
+    """Is the request body required?"""
+
+
 class Body(Marker):
     """Annotate a parameter as a request body."""
 
+    __defaults: typing.Final[RequestBodyDescription] = {
+        'description': None,
+        'required': False,
+    }
+
     def __init__(
         self,
-        *,
-        description: str | None = None,
-        required: bool = False,
+        **kwargs: typing.Unpack[RequestBodyDescription],
     ) -> None:
-        self.description = description
-        self.required = required
+        self.openapi = self.__defaults | kwargs
 
 
 ModelType = typing.TypeVar('ModelType', bound=pydantic.BaseModel)

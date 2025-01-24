@@ -107,7 +107,7 @@ class OpenAPIDocument:
         if (request_body := marker.request_body) is not None:
             ref = self._add_model(request_body.type)
             operation.request_body = models.RequestBody(
-                description=request_body.metadata.description,
+                description=request_body.metadata.openapi['description'],
                 content={'application/json': models.Content(schema=ref)},
                 required=True,
             )
