@@ -17,6 +17,10 @@ class AnotherModel(pydantic.BaseModel):
     id: int
 
 
+class DerivedModel(api.Body, Model):
+    pass
+
+
 class DecorateTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def create_handler(
@@ -71,9 +75,6 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(marker.parameters['name'].annotation, str)
 
     def test_body_parameter_detection(self) -> None:
-        class DerivedModel(api.Body, Model):
-            pass
-
         class Handler(web.RequestHandler):
             @api.expose_operation
             async def post(
@@ -288,3 +289,37 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             'This is a more detailed description. It includes\n'
             'multiple lines and preserves the formatting.',
         )
+
+    def test_multiple_body_parameters(self) -> None:
+        with self.assertRaises(errors.ParameterUsageError):
+
+            class MultipleAnnotatedBodies(web.RequestHandler):
+                @api.expose_operation
+                async def post(
+                    self,
+                    *,
+                    body1: typing.Annotated[Model, api.Body],
+                    body2: typing.Annotated[Model, api.Body],
+                ) -> None:
+                    pass
+
+        with self.assertRaises(errors.ParameterUsageError):
+
+            class MultipleDerivedBodies(web.RequestHandler):
+                @api.expose_operation
+                async def post(
+                    self, *, body1: DerivedModel, body2: DerivedModel
+                ) -> None:
+                    pass
+
+        with self.assertRaises(errors.ParameterUsageError):
+
+            class MultipleMixedBodies(web.RequestHandler):
+                @api.expose_operation
+                async def post(
+                    self,
+                    *,
+                    body1: typing.Annotated[Model, api.Body],
+                    body2: DerivedModel,
+                ) -> None:
+                    pass

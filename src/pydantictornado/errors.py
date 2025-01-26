@@ -60,3 +60,15 @@ class BodyValidationError(Error, web.HTTPError):
     def __init__(self, error: pydantic.ValidationError) -> None:
         super().__init__(422, 'failed to validate request: %s', error.title)
         self.error = error
+
+
+class ParameterUsageError(Error, RuntimeError):
+    """Error raised when incorrect usage of a parameter is detected.
+
+    This exception is meant to highlight illegal or inappropriate
+    use of parameters in a given context. It ensures the
+    parameter-related violations are clearly captured and
+    communicated during runtime. Typically, it is used in scenarios
+    where parameter values do not meet the required constraints or
+    violate expected behavior.
+    """

@@ -157,21 +157,20 @@ def expose_operation(  # noqa: C901, PLR0915
     properties.
 
     Raises:
+        errors.BodyValidationError: Occurs during request validation if the
+            body does not match the Pydantic model attribute's validation
+            rules.
+        errors.MarkerNotFoundError: Occurs when the OpenAPI marker is not found
+            on the provided function but additional OpenAPI metadata needs to
+            be attached.
+        errors.ParameterUsageError: Raised when multiple body parameters are
+            detected.
         TypeError: Raised when the provided arguments do not conform to the
             expected types (e.g., non-callable or non-coroutine function passed
             as the first argument).
         errors.UnsupportedAnnotationError: Raised when an unsupported type is
             provided for a parameter annotation, such as missing type
             annotations or an unsupported special form.
-        errors.MarkerNotFoundError: Occurs when the OpenAPI marker is not found
-            on the provided function but additional OpenAPI metadata needs to
-            be attached.
-        errors.UnsupportedParameterError: Raised for unsupported parameter
-            kinds, such as VAR_POSITIONAL or VAR_KEYWORD, that do not satisfy
-            the expected signature.
-        errors.BodyValidationError: Occurs during request validation if the
-            body does not match the Pydantic model attribute's validation
-            rules.
     """
     func_provided: (
         typing.Callable[..., typing.Awaitable[ModelType | None]] | None
@@ -237,6 +236,10 @@ def expose_operation(  # noqa: C901, PLR0915
                             raise errors.UnsupportedAnnotationError(
                                 type(param_type)
                             )
+                        if body_param is not None:
+                            raise errors.ParameterUsageError(
+                                'More than one body parameter is not allowed'
+                            )
                         body_param = param
                         body_cls = param_type
                         marker.set_request_body(
@@ -253,6 +256,10 @@ def expose_operation(  # noqa: C901, PLR0915
             if issubclass(param_type, Body) and issubclass(
                 param_type, pydantic.BaseModel
             ):
+                if body_param is not None:
+                    raise errors.ParameterUsageError(
+                        'More than one body parameter is not allowed'
+                    )
                 body_param = param
                 body_cls = param_type
                 marker.set_request_body(param.name, param_type, None)
