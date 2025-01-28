@@ -66,9 +66,7 @@ class OrderHandler(shared.RequestHandler):
         try:
             return self.application.orders[order_id]
         except KeyError:
-            raise api.StructuredError(
-                404, shared.NotFoundErrorResponse()
-            ) from None
+            raise api.wrap_error(404, shared.NotFoundErrorResponse()) from None
 
     @api.expose_operation(summary='Update an order')
     @api.add_error_response(
@@ -83,9 +81,7 @@ class OrderHandler(shared.RequestHandler):
         try:
             order = self.application.orders[order_id]
         except KeyError:
-            raise api.StructuredError(
-                404, shared.NotFoundErrorResponse()
-            ) from None
+            raise api.wrap_error(404, shared.NotFoundErrorResponse()) from None
 
         self.logger.info('update request: %s', body)
         for update in body:
@@ -95,7 +91,7 @@ class OrderHandler(shared.RequestHandler):
                 try:
                     item = order.items[update.item_index]
                 except IndexError:
-                    raise api.StructuredError(
+                    raise api.wrap_error(
                         400,
                         shared.InvalidItemErrorResponse(
                             item_index=update.item_index,
@@ -126,9 +122,9 @@ class PaymentHandler(shared.RequestHandler):
     ) -> models.ActiveOrder:
         order = self.application.get_order(order_id)
         if order is None:
-            raise api.StructuredError(404, shared.NotFoundErrorResponse())
+            raise api.wrap_error(404, shared.NotFoundErrorResponse())
         if order.state != 'open':
-            raise api.StructuredError(409, shared.OrderAlreadyPaidResponse())
+            raise api.wrap_error(409, shared.OrderAlreadyPaidResponse())
 
         self.set_status(http.HTTPStatus.ACCEPTED, reason='Payment Accepted')
         self.application.pay_for_order(order, body)

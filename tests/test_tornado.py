@@ -158,7 +158,7 @@ class CreateItemHandler(handlers.PydanticErrorHandler):
     ) -> Item:
         if body.name == 'conflict':
             self.set_status(http.HTTPStatus.CONFLICT)
-            raise api.StructuredError(
+            raise api.wrap_error(
                 http.HTTPStatus.CONFLICT,
                 ErrorModel(status=409, title='Conflict'),
             )
@@ -491,7 +491,7 @@ class TestErrorHandling(tests.AsyncTestCase[Application]):
 
     def test_creating_invalid_structured_error(self) -> None:
         with self.assertRaises(TypeError):
-            api.StructuredError(404, None)  # type: ignore[type-var]
+            api.StructuredError(404, None)  # type: ignore[arg-type]
 
     async def test_validation_errors(self) -> None:
         bad_body = {'invalid': 'body'}

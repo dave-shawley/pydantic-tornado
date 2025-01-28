@@ -71,7 +71,7 @@ class Application(handlers.OpenAPIApplication, tornado.web.Application):
         try:
             return self.db[item_id]
         except KeyError:
-            raise api.StructuredError(404, ItemNotFoundResponse()) from None # (3)!
+            raise api.wrap_error(404, ItemNotFoundResponse()) from None # (3)!
 
 
 class ErrorResponse(pydantic.BaseModel):
@@ -156,8 +156,7 @@ if __name__ == '__main__':
    attribute of the application. Then the [tag_operation][pydantictornado.handlers.OpenAPIApplication.tag_operation]
    method is used to associate an operation with a tag.
 3. This is an example of how to return a model-based error. This isn't my favorite part of the API, but it is required
-   since [pydantic.BaseModel][] cannot be combined with [Exception][] in a class MRO :frown: I am look for an alternative
-   syntax so this is likely to change in the future.
+   since [pydantic.BaseModel][] cannot be combined with [Exception][] in a class MRO :frown:
 4. Expose this method as an OpenAPI operation. The `summary` and `default_status` parameters are optional. I recommend
    including a summary for all operations. The `default_status` is used when the operation returns a successful response
    other than `200 OK`. If you include a `default_status`, the library sets the response status for you. You can also
@@ -188,14 +187,16 @@ passed to the method. Additional method parameters are coerced from strings to t
 is a Pydantic model, then the response is serialized and returned to the client.
 
 Exception handling is another area where this library differs from typical Tornado applications. In the `get_item` method,
-the `ItemNotFoundResponse` is raised when the item is not found. This is a subclass of [pydantictornado.api.StructuredError][]
-which is a wrapper that allows you to return a Pydantic model as the response body. This is necessary because Pydantic models
-cannot subclass [Exception][] and be used in a `raise` statement. `StructuredError` is a generic form of the [tornado.web.HTTPError][]
-class that carries a Pydantic model as the response body. The [api.add_error_response][pydantictornado.api.add_error_response]
-decorator is used to associate the model in the OpenAPI specification. It **is not** responsible for trasforming the exception
-into a response body. That is in the [pydantictornado.handlers.PydanticErrorHandler][] class. Using a base class for request
+the `ItemNotFoundResponse` is raised when the item is not found. The [api.wrap_error][pydantictornado.api.wrap_error] function
+returns a wrapper exception that allows you to return a Pydantic model as the response body by raising an exception. The
+wrapper is necessary because Pydantic models cannot subclass [Exception][] and be used in a `raise` statement. The `wrap_error`
+function returns a subclass of [web.HTTPError][tornado.web.HTTPError] that the [pydantictornado.handlers.PydanticErrorHandler][]
+class knows how to serialize so you need to include that class in the MRO of your request handler when you use this feature.
+
+The [api.add_error_response][pydantictornado.api.add_error_response] decorator is used to associate the model in the OpenAPI
+specification. It **is not** responsible for transforming the exception into a response body. Using a base class for request
 handlers that pulls together anything else that you need in every request handler is a pretty common pattern in Tornado
-applications.
+applications so it should be as easy as adding `handlers.PydanticErrorHandler` to your base class.
 
 Now let's look at what the OpenAPI documentation looks like. The following screenshot is for the `post` method that we
 discussed above.

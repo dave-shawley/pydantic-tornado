@@ -1,6 +1,5 @@
 # Errors
 
-## ::: pydantictornado.api.StructuredError
 ## ::: pydantictornado.errors.BodyValidationError
 ## ::: pydantictornado.errors.Error
 ## ::: pydantictornado.errors.DuplicateTagError

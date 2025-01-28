@@ -56,9 +56,7 @@ class ResponseFormatter:
     ) -> tuple[str, bytes]:
         exc = exc_info[1] if (exc_info := kwargs.get('exc_info')) else None
         if isinstance(exc, api.StructuredError):
-            return self.format_body(  # cast required for mypy :(
-                handler.request, typing.cast(pydantic.BaseModel, exc.body)
-            )
+            return self.format_body(handler.request, exc.body)
 
         reason = ''
         if isinstance(exc, web.HTTPError):

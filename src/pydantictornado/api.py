@@ -591,41 +591,72 @@ class _FrozenMethodInfo(OpenAPIMethodInfo):
 OpenAPIMethodInfo.EMPTY = _FrozenMethodInfo()
 
 
-class StructuredError[T: pydantic.BaseModel](web.HTTPError):
+class WrapErrorParams(typing.TypedDict, total=False):
+    reason: typing.NotRequired[str]
+    """Optional HTTP reason phrase for the error response."""
+
+
+class StructuredError(web.HTTPError):
     """An exception that includes a structured response body.
 
     This class exists because the [pydantic.BaseModel][] class is not
-    compatible with the [Exception][] class. It whould be nice to raise
+    compatible with the [Exception][] class. It would be nice to raise
     a model instance directly, but that is not possible. Instead, raise
     an instance of this class with the response body as the `body` attribute.
 
-    ```python
-    class NotFoundError(pydantic.BaseModel):
-        message: str
-
-    class MyHandler(pydantictornado.handlers.PydanticErrorHandler,
-                    tornado.web.RequestHandler):
-        async def get(self) -> None:
-            raise api.StructuredError(404, NotFoundError(message='not found'))
-    ```
-
-    The `write_error` method in the [handlers.PydanticErrorHandler]
-    [pydantictornado.handlers.PydanticErrorHandler] class handles catching
-    and serializing structured exceptions.
-
     """
 
-    body: T
+    body: pydantic.BaseModel
 
     def __init__(
         self,
         status_code: int,
-        body: T,
+        body: pydantic.BaseModel,
         log_message: str | None = None,
         *args: object,
-        **kwargs: object,
+        **kwargs: typing.Unpack[WrapErrorParams],
     ) -> None:
         if body is None:
             raise TypeError('body must be a pydantic model instance')
         super().__init__(status_code, log_message, *args, **kwargs)
         self.body = body
+
+
+def wrap_error(
+    status_code: int,
+    body: pydantic.BaseModel,
+    log_message: str | None = None,
+    *args: object,
+    **kwargs: typing.Unpack[WrapErrorParams],
+) -> web.HTTPError:
+    """Wrap a pydantic model in an exception that can be raised.
+
+    [pydantic.BaseModel][] instances cannot be raised directly as exceptions
+    which makes them difficult to use for structured error responses. This
+    function wraps the model instance in an exception that can be raised.
+    Call this function from within a [handlers.PydanticErrorHandler]
+    [pydantictornado.handlers.PydanticErrorHandler] instance to serialize
+    `body` as the response body when an error is caught.
+
+    ```python
+    import pydantic
+    from pydantictornado import api, handlers
+    from tornado import web
+
+    class NotFoundError(pydantic.BaseModel):
+        item_id: str
+
+        @pydantic.computed_field
+        @property
+        def message(self) -> str:
+            return f'Item {self.item_id} not found'
+
+    class MyHandler(handlers.PydanticErrorHandler, web.RequestHandler):
+        @api.expose_operation
+        @api.add_error_response(404, model=NotFoundError)
+        async def get(self, item_id: str) -> None:
+            raise api.wrap_error(404, NotFoundError(item_id=item_id))
+    ```
+
+    """
+    return StructuredError(status_code, body, log_message, *args, **kwargs)

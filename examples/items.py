@@ -54,7 +54,7 @@ class Application(handlers.OpenAPIApplication, tornado.web.Application):
         try:
             return self.db[item_id]
         except KeyError:
-            raise api.StructuredError(404, ItemNotFoundResponse()) from None
+            raise api.wrap_error(404, ItemNotFoundResponse()) from None
 
 
 class ErrorResponse(pydantic.BaseModel):
