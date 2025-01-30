@@ -27,7 +27,7 @@ class RemoveItemFromOrder(pydantic.BaseModel):
 OrderUpdate = AddItemToOrder | RemoveItemFromOrder | UpdateOrderItem
 
 
-class OrderUpdateRequest(api.Body, pydantic.RootModel[list[OrderUpdate]]):
+class OrderUpdateRequest(pydantic.RootModel[list[OrderUpdate]]):
     def __iter__(self) -> abc.Iterator[OrderUpdate]:  # type: ignore[override]
         return iter(self.root)
 
@@ -76,7 +76,10 @@ class OrderHandler(shared.RequestHandler):
     )
     @api.add_error_response(422, description='Body validation error')
     async def put(
-        self, order_id: int, *, body: OrderUpdateRequest
+        self,
+        order_id: int,
+        *,
+        body: typing.Annotated[OrderUpdateRequest, api.Body],
     ) -> models.ActiveOrder:
         try:
             order = self.application.orders[order_id]
@@ -118,7 +121,10 @@ class PaymentHandler(shared.RequestHandler):
         description='Order already paid',
     )
     async def put(
-        self, order_id: int, /, body: models.Payment
+        self,
+        order_id: int,
+        /,
+        body: typing.Annotated[models.Payment, api.Body],
     ) -> models.ActiveOrder:
         order = self.application.get_order(order_id)
         if order is None:

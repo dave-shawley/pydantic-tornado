@@ -167,8 +167,7 @@ if __name__ == '__main__':
 6. This is an example of how to use the `api.Body` type hint to indicate that the `body` parameter should be deserialized
    from the request body. The library takes care of deserializing the incoming JSON body to the Pydantic model. If it fails,
    then a library-provided response body is returned with a 422 response. The name of the parameter can be whatever you
-   want, but it must include [api.Body][pydantictornado.api.Body] as an annotation *or* the type needs to be derived from
-   [api.Body][pydantictornado.api.Body]. I'm not sure which one I prefer at this point.
+   want, but it must include [api.Body][pydantictornado.api.Body] as an annotation.
 7. The return value of this method is serialized to JSON and returned to the client. The status code is set to 201 Created
    because of the `default_status` parameter in the [api.expose_operation][pydantictornado.api.expose_operation] decorator.
 8. This is a base class that combines the functionality of the [tornado.web.RequestHandler][] and

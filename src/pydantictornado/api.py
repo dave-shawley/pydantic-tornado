@@ -253,17 +253,6 @@ def expose_operation(  # noqa: C901, PLR0915
             if param_type is inspect.Signature.empty:
                 raise errors.UnsupportedAnnotationError()
 
-            if issubclass(param_type, Body) and issubclass(
-                param_type, pydantic.BaseModel
-            ):
-                if body_param is not None:
-                    raise errors.ParameterUsageError(
-                        'More than one body parameter is not allowed'
-                    )
-                body_param = param
-                body_cls = param_type
-                marker.set_request_body(param.name, param_type, None)
-
             if param is not body_param:
                 marker.parameters[name] = param
 

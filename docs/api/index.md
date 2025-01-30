@@ -102,10 +102,6 @@ class ItemHandler(RequestHandler):
         ...
 ```
 
-You can also use the `api.Body` class in the MRO of your request type. This is occasionally useful to shorten the method signature.
-It can also muddy the type model if you are not very careful; remember that the request body is also required to be a Pydantic model
-so you are adding new fields by subclassing. Using inheritance usually implies an "is-a" relationship which is not the case here.
-
 ## Request bodies and response types
 
 The request body and response types are specified using Pydantic models. The models are used to validate the request body and

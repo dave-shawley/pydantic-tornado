@@ -4,8 +4,6 @@ from collections import abc
 
 import pydantic
 
-from pydantictornado import api
-
 
 class DrinkType(enum.StrEnum):
     """Type of drinks that you can order"""
@@ -127,7 +125,7 @@ class ActiveOrder(pydantic.BaseModel):
         return sum(item.price for item in self.items)
 
 
-class Payment(api.Body, pydantic.BaseModel):
+class Payment(pydantic.BaseModel):
     card_number: str = pydantic.Field(alias='cardNo')
     expires: str = pydantic.Field(pattern=r'^\d{2}/\d{2}$')
     name: str

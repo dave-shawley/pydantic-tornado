@@ -55,7 +55,7 @@ class RequestHandler(handlers.PydanticErrorHandler):
         super().__init__(application, request, **kwargs)
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    def options(self) -> None:
+    def options(self, *_args: str, **_kwargs: str) -> None:
         allowed: list[str] = [
             method_name
             for method_name in self.SUPPORTED_METHODS

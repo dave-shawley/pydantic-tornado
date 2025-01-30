@@ -17,10 +17,6 @@ class AnotherModel(pydantic.BaseModel):
     id: int
 
 
-class DerivedModel(api.Body, Model):
-    pass
-
-
 class DecorateTests(unittest.IsolatedAsyncioTestCase):
     @staticmethod
     def create_handler(
@@ -82,17 +78,9 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
             ) -> None:
                 pass
 
-            @api.expose_operation
-            async def put(self, *, replacement: DerivedModel) -> None:
-                pass
-
         marker = self.extract_marker(Handler.post)
         self.assertEqual(marker.request_body.name, 'body')
         self.assertEqual(marker.request_body.type, Model)
-
-        marker = self.extract_marker(Handler.put)
-        self.assertEqual(marker.request_body.name, 'replacement')
-        self.assertEqual(marker.request_body.type, DerivedModel)
 
     def test_that_extra_annotations_are_ignored(self) -> None:
         class Handler(web.RequestHandler):
@@ -300,26 +288,5 @@ class DecorateTests(unittest.IsolatedAsyncioTestCase):
                     *,
                     body1: typing.Annotated[Model, api.Body],
                     body2: typing.Annotated[Model, api.Body],
-                ) -> None:
-                    pass
-
-        with self.assertRaises(errors.ParameterUsageError):
-
-            class MultipleDerivedBodies(web.RequestHandler):
-                @api.expose_operation
-                async def post(
-                    self, *, body1: DerivedModel, body2: DerivedModel
-                ) -> None:
-                    pass
-
-        with self.assertRaises(errors.ParameterUsageError):
-
-            class MultipleMixedBodies(web.RequestHandler):
-                @api.expose_operation
-                async def post(
-                    self,
-                    *,
-                    body1: typing.Annotated[Model, api.Body],
-                    body2: DerivedModel,
                 ) -> None:
                     pass
