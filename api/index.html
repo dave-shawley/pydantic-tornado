@@ -1,0 +1,834 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+        <meta name="author" content="Dave Shawley">
+      
+      
+      
+        <link rel="prev" href="../index.html">
+      
+      
+        <link rel="next" href="decorators.html">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.5.50">
+    
+    
+      
+        <title>API Reference - Pydantic Tornado</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.a40c8224.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../index.html" title="Pydantic Tornado" class="md-header__button md-logo" aria-label="Pydantic Tornado" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Pydantic Tornado
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Toggle palette"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Toggle palette" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/dave-shawley/pydantic-tornado" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dave-shawley/pydantic-tornado
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../index.html" class="md-tabs__link">
+        
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="index.html" class="md-tabs__link">
+          
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../rationale/annotated.html" class="md-tabs__link">
+          
+  
+    
+  
+  Rationale
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../changelog.html" class="md-tabs__link">
+        
+  
+    
+  
+  Release History
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../index.html" title="Pydantic Tornado" class="md-nav__button md-logo" aria-label="Pydantic Tornado" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Pydantic Tornado
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/dave-shawley/pydantic-tornado" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    dave-shawley/pydantic-tornado
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../index.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="index.html" class="md-nav__link md-nav__link--active">
+              
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_2" id="__nav_2_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            API Reference
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="decorators.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Decorators
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="annotations.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Type annotations
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="tornado.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Tornado Interface
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="openapi.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    OpenAPI Specification
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="errors.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Errors
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="misc.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Miscellaneous
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+      
+        
+        
+      
+    
+    <li class="md-nav__item md-nav__item--pruned md-nav__item--nested">
+      
+        
+  
+  
+    <a href="../rationale/annotated.html" class="md-nav__link">
+      
+  
+  <span class="md-ellipsis">
+    Rationale
+  </span>
+  
+
+      
+        <span class="md-nav__icon md-icon"></span>
+      
+    </a>
+  
+
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../changelog.html" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Release History
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<p>The Pydantic Tornado API is more complex than I would like it to be, but it is also very powerful. The combination of compile-time
+and runtime behavior makes the API rather complex to reason about. Hopefully, this section will help you understand how to use the API.
+The snippets in this section refer back to the example application presented in the main page.</p>
+<h2 id="decorators">Decorators<a class="headerlink" href="#decorators" title="Permanent link">&para;</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code>add_error_response</code> and <code>add_response_header</code> decorators <strong>do not</strong> insert headers or influence the response sent
+to the client. They only add metadata to the OpenAPI specification. The request handler is responsible for calling
+<a class="autorefs autorefs-external" href="https://www.tornadoweb.org/en/stable/web.html#tornado.web.RequestHandler.set_header">self.set_header</a> to set the header content.</p>
+</div>
+<p>The <a class="autorefs autorefs-internal" href="decorators.html#pydantictornado.api.expose_operation">api.expose_operation</a> decorator exposes a method as an operation in the OpenAPI
+specification. It also validates the request body and other parameters based on type annotations and then passes the validated
+values to the method. The method is required to be an async method and it should return a model instance or <code>None</code>. The
+model schema for the body and the "successful" return value are taken directly from the Pydantic models used in the type
+annotations. You can influence the schema definition using Pydantic's JSON schema generation features.</p>
+<p>The <a class="autorefs autorefs-internal" href="decorators.html#pydantictornado.api.add_error_response">api.add_error_response</a> decorator adds an error response to the operation. Each
+decorator call adds a new error response to <a href="https://spec.openapis.org/oas/v3.1.1.html#responses-object">the <code>responses</code> collection</a>
+of the OpenAPI operation. You can include multiple error responses for a single operation by stacking decorators. This decorator
+works in conjunction with the <a class="autorefs autorefs-internal" href="tornado.html#pydantictornado.handlers.OpenAPIApplication.register_error_model">register_error_model</a> method
+of the application. You can specify the structure (schema) of the error body using the <code>model</code> keyword argument of the decorator
+or by calling the <code>register_error_model</code> method during application initialization.</p>
+<details class="tip" open="open">
+<summary>Tip</summary>
+<p>You should default to describing error structure using the <a class="autorefs autorefs-internal" href="tornado.html#pydantictornado.handlers.OpenAPIApplication.register_error_model">register_error_model</a>
+method. The <code>model</code> keyword argument of the <a class="autorefs autorefs-internal" href="decorators.html#pydantictornado.api.add_error_response">api.add_error_response</a> decorator should
+only be used for responses that are specific to a single operation.</p>
+</details>
+<p>The <a class="autorefs autorefs-internal" href="decorators.html#pydantictornado.api.add_response_header">api.add_response_header</a> decorator adds a response header to the specification.
+Most response headers have a simple structure, but you can use the <code>model</code> parameter to specify a more complex structure if
+necessary. The <code>for_status</code> keyword can be used to specify the status code for which the header is relevant. If the <code>for_status</code>
+is unspecified, then the header is added to every response for the operation. It can be set to a single status code or a list
+of status codes.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">CollectionHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">expose_operation</span><span class="p">(</span><span class="n">summary</span><span class="o">=</span><span class="s1">&#39;Create a new Item&#39;</span><span class="p">,</span> <span class="n">default_status</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_error_response</span><span class="p">(</span><span class="mi">422</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_response_header</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="n">for_status</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Annotated</span><span class="p">[</span><span class="n">CreationRequest</span><span class="p">,</span> <span class="n">api</span><span class="o">.</span><span class="n">Body</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Item</span><span class="p">:</span>
+        <span class="n">new_item</span> <span class="o">=</span> <span class="n">Item</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">(),</span> <span class="o">**</span><span class="n">body</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;python&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">application</span><span class="o">.</span><span class="n">db</span><span class="p">[</span><span class="n">new_item</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_item</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_header</span><span class="p">(</span><span class="s1">&#39;location&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reverse_url</span><span class="p">(</span><span class="s1">&#39;item_handler&#39;</span><span class="p">,</span> <span class="n">new_item</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">new_item</span>
+</code></pre></div>
+<h2 id="usage-of-typingannotated">Usage of typing.Annotated<a class="headerlink" href="#usage-of-typingannotated" title="Permanent link">&para;</a></h2>
+<p>This library makes use of <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/typing.html#typing.Annotated">typing.Annotated</a> to attach OpenAPI metadata to types and to mark parameters for runtime processing.
+I adopted this approach after using FastAPI's dependency injection system. The use of annotations frees you to name and arrange
+your method parameters freely. In essence, this is what makes your request handling methods feel like regular Python methods
+where you are in complete control of the signature. The magic happens inside the erapper provided by the <code>api.expose_operation</code>
+decorator so you can call the method exactly as it appears in the source code should you need to do so.</p>
+<h3 id="marking-the-request-body">Marking the request body<a class="headerlink" href="#marking-the-request-body" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ItemHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">expose_operation</span><span class="p">(</span><span class="n">summary</span><span class="o">=</span><span class="s1">&#39;Update Item by ID&#39;</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_error_response</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Item Not Found&#39;</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_error_response</span><span class="p">(</span><span class="mi">422</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Annotated</span><span class="p">[</span><span class="n">Item</span><span class="p">,</span> <span class="n">api</span><span class="o">.</span><span class="n">Body</span><span class="p">]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Item</span><span class="p">:</span>
+        <span class="o">...</span>
+</code></pre></div>
+<p>The <code>body</code> parameter is marked with <code>typing.Annotated[Item, api.Body]</code>. This tells the API that the parameter should receive the
+request body. The library will validate the request body against the <code>Item</code> model and pass the validated data to the method.
+The pydantic model is also used to generate the OpenAPI schema for the request body. The <code>item_id</code> parameter is not marked with
+a pydantic-tornado annotation so it is treated as a path parameter. The type hint is used as the schema for the path parameter
+in the generated OpenAPI operation. Path parameters are passed as strings; however, the library converts the string value to the
+hinted type.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The library only supports <code>str</code>, <code>int</code>, and <code>float</code> path parameters. If you need to use a different type, you should use
+a string annotation and implement type conversion in the method body.</p>
+</div>
+<h3 id="augmenting-the-openapi-specification">Augmenting the OpenAPI specification<a class="headerlink" href="#augmenting-the-openapi-specification" title="Permanent link">&para;</a></h3>
+<p>The second use of <code>typing.Annotated</code> is to augment the generated OpenAPI specification. You can pass an instance of
+<a class="autorefs autorefs-internal" href="annotations.html#pydantictornado.api.Body">api.Body</a> as an annotation to specify additional metadata for the request body. The description for
+the request body is omitted by default. You can provide one by passing the <code>description</code> keyword to the <code>api.Body</code> initializer.</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ItemHandler</span><span class="p">(</span><span class="n">RequestHandler</span><span class="p">):</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">expose_operation</span><span class="p">(</span><span class="n">summary</span><span class="o">=</span><span class="s1">&#39;Update Item by ID&#39;</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_error_response</span><span class="p">(</span><span class="mi">404</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="s1">&#39;Item Not Found&#39;</span><span class="p">)</span>
+    <span class="nd">@api</span><span class="o">.</span><span class="n">add_error_response</span><span class="p">(</span><span class="mi">422</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">put</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">item_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span>
+        <span class="n">body</span><span class="p">:</span> <span class="n">typing</span><span class="o">.</span><span class="n">Annotated</span><span class="p">[</span><span class="n">Item</span><span class="p">,</span> <span class="n">api</span><span class="o">.</span><span class="n">Body</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s1">&#39;The new item data&#39;</span><span class="p">)]</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Item</span><span class="p">:</span>
+        <span class="o">...</span>
+</code></pre></div>
+<h2 id="request-bodies-and-response-types">Request bodies and response types<a class="headerlink" href="#request-bodies-and-response-types" title="Permanent link">&para;</a></h2>
+<p>The request body and response types are specified using Pydantic models. The models are used to validate the request body and
+generate the OpenAPI schema for the operation. If the request model does not validate the request body, the API will return a
+<a href="https://datatracker.ietf.org/doc/html/rfc4918#section-11.2">422 Unprocessable Entity</a> response code with a JSON body containing
+the validation errors. The response body uses the <a class="autorefs autorefs-internal" href="misc.html#pydantictornado.openapi.ValidationError">openapi.ValidationError</a> model. The
+library <strong>does not</strong> register the error model for you. You should add the <a class="autorefs autorefs-internal" href="decorators.html#pydantictornado.api.add_error_response">api.add_error_response</a>
+decorator to your method if you want to document the response code.</p>
+<h2 id="openapi-specification-and-ui">OpenAPI specification and UI<a class="headerlink" href="#openapi-specification-and-ui" title="Permanent link">&para;</a></h2>
+<p>The OpenAPI specification is generated from information stored on the <code>Application</code> instance which must include
+<a class="autorefs autorefs-internal" href="tornado.html#pydantictornado.handlers.OpenAPIApplication">handlers.OpenAPIApplication</a> in its MRO. The specification is made available by
+installing a route using the <a class="autorefs autorefs-internal" href="tornado.html#pydantictornado.handlers.OpenAPISpecHandler">handlers.OpenAPISpecHandler</a> handler. The
+<a class="autorefs autorefs-internal" href="tornado.html#pydantictornado.handlers.OpenAPIDocHandler">handlers.OpenAPIDocHandler</a> handler is also available to serve a
+<a href="https://elements.stoplight.io/">Stoplight Elements</a> documentation page. You are responsible for wiring the handlers together
+in your application. I recommend subclassing the <code>Application</code> class and extending the initializer instead of using a factory
+function.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantictornado</span><span class="w"> </span><span class="kn">import</span> <span class="n">handlers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">tornado</span><span class="w"> </span><span class="kn">import</span> <span class="n">web</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Application</span><span class="p">(</span><span class="n">handlers</span><span class="o">.</span><span class="n">OpenAPIApplication</span><span class="p">,</span> <span class="n">web</span><span class="o">.</span><span class="n">Application</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">routes</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">web</span><span class="o">.</span><span class="n">URLSpec</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/openapi.json&#39;</span><span class="p">,</span> <span class="n">handlers</span><span class="o">.</span><span class="n">OpenAPISpecHandler</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;openapi_spec&#39;</span><span class="p">),</span>
+            <span class="n">web</span><span class="o">.</span><span class="n">URLSpec</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;/docs&#39;</span><span class="p">,</span> <span class="n">handlers</span><span class="o">.</span><span class="n">OpenAPIDocHandler</span><span class="p">,</span>
+                        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;spec_handler_name&#39;</span><span class="p">:</span> <span class="s1">&#39;openapi_spec&#39;</span><span class="p">},</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;openapi_docs&#39;</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">routes</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.code.annotate", "content.code.copy", "navigation.indexes", "navigation.instant", "navigation.prune", "navigation.tabs", "navigation.top", "toc.follow", "toc.integrate"], "search": "../assets/javascripts/workers/search.f8cc74c7.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.60a45f97.min.js"></script>
+      
+    
+  </body>
+</html>
